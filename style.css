@@ -1,0 +1,20 @@
+body {
+    background-color: darkgray;
+    overflow: hidden;
+}
+
+#container > *{
+    vertical-align: top;
+}
+
+#tetris {
+    border: solid black 5px;
+}
+#next {
+    border: solid black 5px;
+    margin-left: 5px;
+}
+#held {
+    border: solid black 5px;
+    margin-left: 5px;
+}
