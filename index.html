@@ -14,11 +14,13 @@
         <script src="./js/Canvas.js"></script>
     </head>
     <body>
-        <div id="menu">
-
+        <div id="menu" class="text-center">
+            <button id="start" class="btn btn-secondary" onclick="startGame()">Start Game</button>
+            <button id="stop" class="btn btn-secondary" onclick="stopGame()">End Game</button>
+            <button id="pause" class="btn btn-secondary" onclick="pauseGame()">(un)puase Game</button>
         </div>
         <h3>Score: <span id="score"></span></h3>
-        <div id="container" class="container h-100">
+        <div id="container" class="text-center">
         </div>
     </body>
 </html>

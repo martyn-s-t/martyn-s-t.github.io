@@ -29,18 +29,22 @@ function initBoard() {
 
 }
 function initNextPiece() {
-	nextPiece.board = new Board(5,5,0);
-	nextPiece.canvas = new Canvas("next", 5, 5, scale);
-	document.querySelector("#container").appendChild(nextPiece.canvas.canvas);
-	nextPiece.canvas.setBoard(nextPiece.board.exportColours())
-	nextPiece.canvas.startAnimation();
+	if (!storedPiece.board) {
+		nextPiece.board = new Board(5,5,0);
+		nextPiece.canvas = new Canvas("next", 5, 5, scale);
+		document.querySelector("#container").appendChild(nextPiece.canvas.canvas);
+		nextPiece.canvas.setBoard(nextPiece.board.exportColours())
+		nextPiece.canvas.startAnimation();
+	}
 }
 function initStoredPiece() {
-	storedPiece.board = new Board(5,5,0);
-	storedPiece.canvas = new Canvas("held", 5, 5,scale);
-	document.querySelector("#container").prepend(storedPiece.canvas.canvas);
-	storedPiece.canvas.setBoard(storedPiece.board.exportColours())
-	storedPiece.canvas.startAnimation();
+	if (!storedPiece.board) {
+		storedPiece.board = new Board(5,5,0);
+		storedPiece.canvas = new Canvas("held", 5, 5,scale);
+		document.querySelector("#container").prepend(storedPiece.canvas.canvas);
+		storedPiece.canvas.setBoard(storedPiece.board.exportColours())
+		storedPiece.canvas.startAnimation();
+	}
 }
 function addPiece(event,setPiece) {
 	currentPiece = setPiece || nextPiece.piece || new Tetromino();
@@ -136,17 +140,21 @@ function startGame() {
 function stopGame() {
 	board = new Board(width,height);
 	tetris.setBoard(board.exportColours())
+
+	nextPiece.board = new Board(5,5,0);
+	nextPiece.canvas.setBoard(nextPiece.board.exportColours());
+
+	storedPiece.board = new Board(5,5,0);
+	storedPiece.canvas.setBoard(storedPiece.board.exportColours());
+
 	document.removeEventListener("addPiece",addPiece);
 	document.removeEventListener("keydown",keyPressHandler);
 	clearInterval(tick.interval);
-	tetris.stopAnimation()
 }
 function pageLoad() {
 	tetris = new Canvas("tetris",width,height,scale);
 	board = new Board(width,height);
 	document.querySelector("#container").appendChild(tetris.canvas);
-	startGame();
-	
 }
 function keyPressHandler(event) {
 	switch(event.key) {
