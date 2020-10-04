@@ -627,12 +627,12 @@ class Tetromino {
 		let self = this;
 		let colourMap = {
 			"I": "red",
-			"O": "blue",
-			"T": "green",
-			"S": "yellow",
+			"O": "teal",
+			"T": "yellow",
+			"S": "blue",
 			"Z": "orange",
-			"J": "pink",
-			"L": "purple"
+			"J": "purple",
+			"L": "green"
 		}
 		return colourMap[self.piece.name];
 	}	
