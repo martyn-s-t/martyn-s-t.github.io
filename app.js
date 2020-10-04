@@ -156,6 +156,9 @@ function pageLoad() {
 	board = new Board(width,height);
 	document.querySelector("#container").appendChild(tetris.canvas);
 }
+function pauseGame() {
+	
+}
 function keyPressHandler(event) {
 	switch(event.key) {
 		case "ArrowDown":
@@ -178,8 +181,11 @@ function keyPressHandler(event) {
 		case "w":
 			//slamDown()
 			break;
-		case "e":
+		case "j":
 			rotateClockWise();
+			break;
+		case "k":
+			rotateAntiClockWise();
 			break;
 		case "q":
 			swapStoredPiece();
