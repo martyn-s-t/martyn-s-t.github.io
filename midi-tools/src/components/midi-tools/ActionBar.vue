@@ -5,8 +5,8 @@ const emit = defineEmits("download-midi");
 const midiJson = defineModel("midiJson");
 
 const newBpm = ref(Math.round(midiJson.value.header.tempos[0].bpm));
-const noteDivision = ref(32);
-const nodeDevisionOptions = ref([1, 2, 4, 8, 16, 32]);
+const noteDivision = ref(64);
+const nodeDevisionOptions = ref([1, 2, 4, 8, 16, 32, 64, 128]);
 
 const onlyOneTempo = computed(() => midiJson.value.header.tempos.length !== 1);
 const secondsPerTick = computed(() => 60 / midiJson.value.header.tempos[0].bpm / midiJson.value.header.ppq);
