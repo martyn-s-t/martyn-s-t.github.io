@@ -8,6 +8,9 @@ const newBpm = ref(Math.round(midiJson.value.header.tempos[0].bpm));
 const noteDivision = ref(64);
 const nodeDevisionOptions = ref([1, 2, 4, 8, 16, 32, 64, 128]);
 
+const quantizeModeFloorStart = ref(false);
+const quantizeModeCeilDuration = ref(false);
+
 const onlyOneTempo = computed(() => midiJson.value.header.tempos.length !== 1);
 const secondsPerTick = computed(() => 60 / midiJson.value.header.tempos[0].bpm / midiJson.value.header.ppq);
 
@@ -183,7 +186,7 @@ function quantize() {
                 Object.entries(track.controlChanges).map(([controlChangeNumber, controlChangeEvents]) => ([
                     controlChangeNumber,
                     controlChangeEvents.map(controlChange => {
-                        const snappedTicks = quantizeTicks(controlChange.ticks, grid)
+                        const snappedTicks = quantizeStart(controlChange.ticks, grid)
 
                         return {
                             number: controlChange.number,
@@ -195,7 +198,7 @@ function quantize() {
                 ]))
             ),
 
-            endOfTrackTicks: quantizeTicks(track.endOfTrackTicks, grid),
+            endOfTrackTicks: quantizeDuration(track.endOfTrackTicks, grid),
 
             instrument: {
                 family: track.instrument.family,
@@ -206,8 +209,8 @@ function quantize() {
             name: track.name,
 
             notes: track.notes.map(note => {
-                const snappedTicks = quantizeTicks(note.ticks, grid)
-                const snappedDurationTicks = quantizeTicks(note.durationTicks, grid)
+                const snappedTicks = quantizeStart(note.ticks, grid)
+                const snappedDurationTicks = quantizeDuration(note.durationTicks, grid)
 
                 return {
                     duration: snappedDurationTicks * secondsPerTick.value,
@@ -221,7 +224,7 @@ function quantize() {
             }).sort((a, b) => a.ticks - b.ticks),
 
             pitchBends: track.pitchBends.map(pitchBend => {
-                const snappedTicks = quantizeTicks(pitchBend.ticks, grid)
+                const snappedTicks = quantizeStart(pitchBend.ticks, grid)
 
                 return {
                     ticks: snappedTicks,
@@ -236,9 +239,29 @@ function quantize() {
     console.log(newMidiJson);
 }
 
+function quantizeStart(ticks, grid) {
+  if (quantizeModeFloorStart.value) return quantizeFloor(ticks, grid)
+  return quantizeTicks(ticks, grid) // default round
+}
+
+function quantizeDuration(ticks, grid) {
+  if (quantizeModeCeilDuration.value) return quantizeCeil(ticks, grid)
+  return quantizeTicks(ticks, grid) // default round
+}
+
+
 function quantizeTicks(ticks, grid) {
     return Math.round(ticks / grid) * grid;
 }
+
+function quantizeFloor(ticks, grid) {
+    return Math.floor(ticks / grid) * grid
+}
+
+function quantizeCeil(ticks, grid) {
+    return Math.ceil(ticks / grid) * grid
+}
+
 
 function downloadMidi() {
     emit("download-midi");
@@ -249,10 +272,15 @@ function downloadMidi() {
     <v-container fluid>
         <v-row>
             <v-col cols="2"><v-btn block @click="setStartTimeToZero" :disabled="onlyOneTempo">Shift Start to 0</v-btn></v-col>
-            <v-col cols="2"><v-number-input v-model="newBpm" density="compact" hide-details="auto" /></v-col>
+            
+            <v-col cols="1"><v-number-input v-model="newBpm" density="compact" hide-details="auto" /></v-col>
             <v-col cols="2"><v-btn block @click="updateBpm" :disabled="onlyOneTempo">Update BPM</v-btn></v-col>
-            <v-col cols="2"><v-autocomplete v-model="noteDivision" :items="nodeDevisionOptions" density="compact" hide-details="auto"/></v-col>
-            <v-col cols="2"><v-btn block @click="quantize" :disabled="onlyOneTempo || !noteDivision" >Quantize</v-btn></v-col>
+
+            <v-col cols="1"><v-switch label="Floor Start" v-model="quantizeModeFloorStart"/></v-col>
+            <v-col cols="1"><v-switch label="Ceil Duration" v-model="quantizeModeCeilDuration"/></v-col>
+            <v-col cols="1"><v-autocomplete v-model="noteDivision" :items="nodeDevisionOptions" density="compact" hide-details="auto" /></v-col>
+            <v-col cols="2"><v-btn block @click="quantize" :disabled="onlyOneTempo || !noteDivision">Quantize</v-btn></v-col>
+            
             <v-col cols="2"><v-btn block @click="downloadMidi">Download Midi</v-btn></v-col>
         </v-row>
     </v-container>
