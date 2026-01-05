@@ -21,13 +21,13 @@ async function convertToJson() {
 	// Parse MIDI → JSON
 	const midi = new Midi(arrayBuffer)
 	midiJson.value = midi.toJSON()
+	console.log(file.value);
 
 	console.log("Converted JSON:", midiJson.value)
 }
 function downloadMidi() {
 	const midi = new Midi();
 	midi.fromJSON(midiJson.value);
-
 	const bytes = midi.toArray();
 	const blob = new Blob([bytes], { type: 'audio/midi' });
 
@@ -35,7 +35,7 @@ function downloadMidi() {
 
 	const a = document.createElement('a');
 	a.href = url
-	a.download = `${file.value.name} - ${Date.now()}.mid`;
+	a.download = `${file.value.name.replace(".mid", "")} - ${Date.now()}.mid`;
 	a.click();
 
 	URL.revokeObjectURL(url);
