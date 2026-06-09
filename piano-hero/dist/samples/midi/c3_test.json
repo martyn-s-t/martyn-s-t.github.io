@@ -1,0 +1,60 @@
+{
+  "header": {
+    "name": "C3 Test",
+    "ppq": 384,
+    "tempos": [{ "bpm": 120, "ticks": 0 }],
+    "timeSignatures": [{ "ticks": 0, "timeSignature": [4, 4], "measures": 0 }]
+  },
+  "tracks": [
+    {
+      "name": "Test Track",
+      "notes": [
+        {
+          "duration": 0.5,
+          "durationTicks": 192,
+          "midi": 48,
+          "name": "C3",
+          "ticks": 0,
+          "time": 0,
+          "velocity": 0.8
+        },
+        {
+          "duration": 1.0,
+          "durationTicks": 384,
+          "midi": 48,
+          "name": "C3",
+          "ticks": 1152,
+          "time": 3,
+          "velocity": 0.8
+        },
+        {
+          "duration": 1.5,
+          "durationTicks": 576,
+          "midi": 48,
+          "name": "C3",
+          "ticks": 2304,
+          "time": 6,
+          "velocity": 0.8
+        },
+        {
+          "duration": 2.0,
+          "durationTicks": 768,
+          "midi": 48,
+          "name": "C3",
+          "ticks": 3456,
+          "time": 9,
+          "velocity": 0.8
+        },
+        {
+          "duration": 2.5,
+          "durationTicks": 960,
+          "midi": 48,
+          "name": "C3",
+          "ticks": 4608,
+          "time": 12,
+          "velocity": 0.8
+        }
+      ]
+    }
+  ]
+}
