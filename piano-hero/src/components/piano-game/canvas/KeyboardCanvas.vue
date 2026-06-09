@@ -88,5 +88,5 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-    <canvas ref="canvasElement" style="position: absolute; bottom: 0; left: 0; width: 100vw; height: 25vh; "></canvas>
+    <canvas ref="canvasElement" style="position: absolute; bottom: 0; left: 0; width: 100vw; height: 20vh; "></canvas>
 </template>

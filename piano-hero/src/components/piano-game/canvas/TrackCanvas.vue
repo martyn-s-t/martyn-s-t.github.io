@@ -1,19 +1,18 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch } from "vue";
-import { Midi } from "@tonejs/midi";
-import * as Tone from "tone";
+import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 
-const emit = defineEmits(["note-up", "note-down"])
-const file = defineModel("file");
+const emit = defineEmits(["note-play", "note-down", "note-up"]);
+
+const startTime = defineModel("startTime");
+const midi = defineModel("midi");
+const props = defineProps({ now: Function, isPlaying: Boolean });
+
 
 const canvasElement = ref(null);
 let canvasContext = null;
 
 let fallingNotes = [];
 let animationFrameId = null;
-
-let synth = null;
-let startTime = 0;
 
 
 function resizeCanvasToCssSize(canvas) {
@@ -29,46 +28,35 @@ function recalculateNoteSpeed(canvas) {
     fallingNotes.forEach(note => note.speed = canvasHeight / 2);
 }
 
-async function loadMidiFile(file) {
-    if (!file.value) return
-
-    const arrayBuffer = await file.value.arrayBuffer()
-    const midi = new Midi(arrayBuffer);
-    preperateMidiFile(midi);
-}
-
-async function loadTestMidi() {
-    const response = await fetch('/samples/midi/c3_test.json');
-    const json = await response.json();
-
-    preperateMidiFile(json)
-}
-
-async function preperateMidiFile(midi) {
+async function prepareMidiData(midi) {
     resizeCanvasToCssSize(canvasElement.value);
     const canvasHeight = canvasElement.value.height;
-    
+
     const timeToFall = 3; // seconds from top to keyboard
     const pixelsPerSecond = canvasHeight / timeToFall;
 
-    fallingNotes = midi.tracks.flatMap(track =>
-        track.notes.map(note => ({
-            midi: note.midi,
-            startTime: note.time,
-            endTime: note.time + note.duration + timeToFall,
-            duration: note.duration,
-            yPosition: -note.duration * pixelsPerSecond,
-            height: note.duration * pixelsPerSecond,
-            speed: canvasHeight / timeToFall,
-            hasStarted: false,
-            hasPlayed: false
-        }))
-    );
-    startTime = Tone.now();
+    fallingNotes = midi.tracks.flatMap(track => {
+        return track.notes.map(note => {
+            return {
+                midi: note.midi,
+                startTime: note.time,
+                endTime: note.time + note.duration + timeToFall,
+                duration: note.duration,
+                yPosition: -note.duration * pixelsPerSecond,
+                height: note.duration * pixelsPerSecond,
+                speed: canvasHeight / timeToFall,
+                hasStarted: false,
+                hasPlayed: false
+            }
+        })
+    });
+    startTime.value = props.now();
 }
 
 function animationLoop() {
-    const now = Tone.now();
+    if (props.isPlaying === false) return animationFrameId = requestAnimationFrame(animationLoop);
+
+    const now = props.now();
     const deltaTime = now - (animationLoop.lastTime || now);
     animationLoop.lastTime = now;
 
@@ -82,7 +70,7 @@ function animationLoop() {
     const whiteKeyWidth = canvasWidth / totalWhiteKeys;
     const blackKeyWidth = whiteKeyWidth * 0.6;
 
-    const elapsedSeconds = now - startTime;
+    const elapsedSeconds = now - startTime.value;
 
     let renderedNotes = 0;
     fallingNotes.forEach(note => {
@@ -107,7 +95,14 @@ function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSec
     note.yPosition += note.speed * deltaTime;
 
     // Autoplay trigger
-    if (!note.hasPlayed && note.yPosition + note.height >= canvasHeight) playNote(note, elapsedSeconds);
+    if (!note.hasPlayed && note.yPosition + note.height >= canvasHeight) {
+        emit("note-play", note.midi, note.duration);
+
+        emit("note-down", note.midi);
+        setTimeout(() => emit("note-up", note.midi), note.duration * 1000);
+
+        note.hasPlayed = true;
+    }
 
     // Draw
     canvasContext.fillStyle = isBlack ? "rgba(0, 60, 130, 1)" : "rgba(0, 150, 255, 0.8)";
@@ -135,17 +130,6 @@ function getWhiteKeyIndex(midiNumber) {
     return index;
 }
 
-function playNote(note) {
-    const midiNumber = note.midi;
-    const noteName = Tone.Frequency(midiNumber, "midi").toNote();
-
-    synth.triggerAttackRelease(noteName, note.duration);
-    emit("note-down", note.midi);
-    note.hasPlayed = true;
-    setTimeout(() => emit("note-up", note.midi), note.duration * 1000);
-}
-
-
 onMounted(async () => {
     const canvas = canvasElement.value;
     canvasContext = canvas.getContext("2d");
@@ -156,30 +140,27 @@ onMounted(async () => {
         recalculateNoteSpeed(canvas);
     });
 
-
-    synth = new Tone.Sampler({
-        urls: {
-            A1: "A1.mp3",
-            C3: "C3.mp3",
-            C4: "C4.mp3",
-            A4: "A4.mp3"
-        },
-        release: 1,
-        baseUrl: "/samples/piano/"
-    }).toDestination();
-
-    await Tone.loaded();
-    await Tone.start();
-
     animationLoop();
-    loadMidiFile(file);
+    prepareMidiData(midi.value);
 });
 
 onBeforeUnmount(() => {
     cancelAnimationFrame(animationFrameId);
 });
+
+watch(startTime, (newStartTime) => {
+    animationLoop.lastTime = props.now();
+    if (newStartTime === 0) {
+        fallingNotes.forEach(n => {
+            n.yPosition = -n.height;
+            n.hasPlayed = false;
+            n.hasStarted = false;
+        });
+    }
+});
+
 </script>
 
 <template>
-    <canvas ref="canvasElement" style="position: absolute; top: 0; left: 0; width: 100vw; height: 75vh; "></canvas>
+    <canvas ref="canvasElement" style="position: absolute; top: 10vh; left: 0; width: 100vw; height: 70vh; "></canvas>
 </template>
