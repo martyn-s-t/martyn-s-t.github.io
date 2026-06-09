@@ -17,11 +17,15 @@ async function convertToJson() {
 
 	// Read MIDI file as ArrayBuffer
 	const arrayBuffer = await file.value.arrayBuffer()
+	console.log(file.value);
 
 	// Parse MIDI → JSON
 	const midi = new Midi(arrayBuffer)
-	midiJson.value = midi.toJSON()
-	console.log(file.value);
+	let midiJsonTemp = midi.toJSON()
+
+	if (midiJsonTemp.header.tempos.length === 0) addBpmFromFirstNote(midiJsonTemp);
+
+	midiJson.value = midiJsonTemp;
 
 	console.log("Converted JSON:", midiJson.value)
 }
@@ -40,6 +44,19 @@ function downloadMidi() {
 
 	URL.revokeObjectURL(url);
 }
+
+function addBpmFromFirstNote(midi) {
+	let bpm  = bpmFromNote(midi.tracks[0].notes[0], midi.header.ppq);
+	midi.header.tempos.push({ bpm: bpm, ticks: 0 });
+}
+
+function bpmFromNote(note, ppq) {
+  const secondsPerTick = note.duration / note.durationTicks;
+  const secondsPerQuarter = secondsPerTick * ppq;
+  const bpm = 60 / secondsPerQuarter;
+  return bpm;
+}
+
 </script>
 
 <template style='height:"100vh";'>
@@ -49,13 +66,16 @@ function downloadMidi() {
 
 	<v-row><v-col class="d-flex justify-center">
 			<DragAndDrop v-model:file="file" v-if="!midiJson" />
-		</v-col></v-row>
+		</v-col>
+	</v-row>
 	<v-row><v-col>
 			<DisplayMidi v-model:file="file" v-model:midiJson="midiJson" v-if="midiJson" />
-		</v-col></v-row>
+		</v-col>
+	</v-row>
 	<v-row><v-col>
 			<ActionBar v-model:midiJson="midiJson" v-if="midiJson" @download-midi="downloadMidi"></ActionBar>
-		</v-col></v-row>
+		</v-col>
+		</v-row>
 </template>
 
 <style scoped></style>
