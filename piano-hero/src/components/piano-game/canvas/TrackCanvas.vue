@@ -80,21 +80,17 @@ function animationLoop() {
 }
 
 function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds, deltaTime) {
-    // Skip until note should start
     if (elapsedSeconds < note.startTime || elapsedSeconds > note.endTime) return;
     note.hasStarted = true;
 
     const whiteIndex = getWhiteKeyIndex(note.midi);
     if (whiteIndex === null) return;
 
-    // Position
     const isBlack = isBlackMidi(note.midi);
     const xPosition = isBlack ? whiteIndex * whiteKeyWidth - blackKeyWidth / 2 : whiteIndex * whiteKeyWidth;
 
-    // Movement
     note.yPosition += note.speed * deltaTime;
 
-    // Autoplay trigger
     if (!note.hasPlayed && note.yPosition + note.height >= canvasHeight) {
         emit("note-play", note.midi, note.duration);
 
