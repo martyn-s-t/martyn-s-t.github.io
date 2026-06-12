@@ -15,6 +15,8 @@ const startTime = defineModel("startTime");
 const isPlaying = ref(false);
 const pausedAt = ref(0);
 
+const isSeeking = ref(false);
+
 
 const activeNotes = reactive({});
 
@@ -23,7 +25,7 @@ const tone = {
 };
 
 function getNow() {
-    return Tone.now();
+    return Tone.now()
 }
 
 function noteDown(midi) { activeNotes[midi] = true; }
@@ -63,6 +65,17 @@ function stop() {
     for (const key in activeNotes) delete activeNotes[key];
 }
 
+function seekTo(seconds) {
+    pausedAt.value = seconds;
+
+    if (isPlaying.value) {
+        startTime.value = getNow() - seconds;
+    } else {
+        startTime.value = 0;
+    }
+}
+
+
 async function loadMidiFile(file) {
     if (!file.value) return
     const arrayBuffer = await file.value.arrayBuffer()
@@ -90,8 +103,8 @@ onMounted(async () => {
 <template>
     <v-sheet v-if="midi" class="d-block pa-0 ma-0" style="position: relative; width: 100vw; height: 100vh; overflow: hidden;" elevation="2">
         <ControllerCanvas v-model:midi="midi" :now="getNow" @play="play" @pause="pause" @stop="stop" />
-        <ProgressCanvas   v-model:midi="midi" v-model:startTime="startTime" :now="getNow" :isPlaying="isPlaying" />
-        <TrackCanvas      v-model:midi="midi" v-model:startTime="startTime" :now="getNow" :isPlaying="isPlaying" @note-play="notePlay" @note-down="noteDown" @note-up="noteUp" />
+        <ProgressCanvas   v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo"/>
+        <TrackCanvas      v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @note-play="notePlay" @note-down="noteDown" @note-up="noteUp" />
         <KeyboardCanvas :activeNotes="activeNotes" />
     </v-sheet>
 </template>

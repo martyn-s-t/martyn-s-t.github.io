@@ -4,7 +4,10 @@ import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 const emit = defineEmits(["note-play", "note-down", "note-up"]);
 
 const startTime = defineModel("startTime");
+const pausedAt = defineModel("pausedAt");
 const midi = defineModel("midi");
+const isSeeking = defineModel("isSeeking");
+
 const props = defineProps({ now: Function, isPlaying: Boolean });
 
 
@@ -13,6 +16,8 @@ let canvasContext = null;
 
 let fallingNotes = [];
 let animationFrameId = null;
+
+let pixelsPerSecond = 0;
 
 
 function resizeCanvasToCssSize(canvas) {
@@ -33,7 +38,7 @@ async function prepareMidiData(midi) {
     const canvasHeight = canvasElement.value.height;
 
     const timeToFall = 3; // seconds from top to keyboard
-    const pixelsPerSecond = canvasHeight / timeToFall;
+    pixelsPerSecond = canvasHeight / timeToFall;
 
     fallingNotes = midi.tracks.flatMap(track => {
         return track.notes.map(note => {
@@ -54,10 +59,9 @@ async function prepareMidiData(midi) {
 }
 
 function animationLoop() {
-    if (props.isPlaying === false) return animationFrameId = requestAnimationFrame(animationLoop);
-
     const now = props.now();
-    const deltaTime = now - (animationLoop.lastTime || now);
+
+    const deltaTime = props.isPlaying ? now - (animationLoop.lastTime || now) : 0;
     animationLoop.lastTime = now;
 
     const canvas = canvasElement.value;
@@ -70,7 +74,7 @@ function animationLoop() {
     const whiteKeyWidth = canvasWidth / totalWhiteKeys;
     const blackKeyWidth = whiteKeyWidth * 0.6;
 
-    const elapsedSeconds = now - startTime.value;
+    const elapsedSeconds = props.isPlaying ? now - startTime.value : pausedAt.value;
 
     let renderedNotes = 0;
     fallingNotes.forEach(note => {
@@ -89,9 +93,9 @@ function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSec
     const isBlack = isBlackMidi(note.midi);
     const xPosition = isBlack ? whiteIndex * whiteKeyWidth - blackKeyWidth / 2 : whiteIndex * whiteKeyWidth;
 
-    note.yPosition += note.speed * deltaTime;
+    note.yPosition = (elapsedSeconds - note.startTime) * pixelsPerSecond - note.height;
 
-    if (!note.hasPlayed && note.yPosition + note.height >= canvasHeight) {
+    if (isSeeking.value === false && !note.hasPlayed && note.yPosition + note.height >= canvasHeight) {
         emit("note-play", note.midi, note.duration);
 
         emit("note-down", note.midi);
@@ -146,13 +150,13 @@ onBeforeUnmount(() => {
 
 watch(startTime, (newStartTime) => {
     animationLoop.lastTime = props.now();
-    if (newStartTime === 0) {
-        fallingNotes.forEach(n => {
-            n.yPosition = -n.height;
-            n.hasPlayed = false;
-            n.hasStarted = false;
-        });
-    }
+    fallingNotes.forEach(note => {
+        if (note.startTime >= newStartTime - props.now()) {
+            note.yPosition = -note.height;
+            note.hasPlayed = false;
+            note.hasStarted = false;
+        }
+    });
 });
 
 </script>
