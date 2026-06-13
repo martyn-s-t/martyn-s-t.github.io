@@ -1,8 +1,16 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, computed } from "vue";
 
+const emit = defineEmits(["seek-to"]);
+
 const midi = defineModel("midi");
 const startTime = defineModel("startTime");
+const pausedAt = defineModel("pausedAt");
+const isSeeking = defineModel("isSeeking");
+
+const isPointerOver = ref(false);
+
+const x = ref(0);
 
 const props = defineProps({
     now: Function,
@@ -25,10 +33,9 @@ function resizeCanvasToCssSize(canvas) {
 }
 
 function animationLoop() {
-    if (props.isPlaying === false) return animationFrameId = requestAnimationFrame(animationLoop);
     const now = props.now();
-    const elapsedSeconds = now - startTime.value;
-    const progress = elapsedSeconds /  endTime.value;
+    const elapsedSeconds = props.isPlaying ? now - startTime.value : pausedAt.value;
+    const progress = elapsedSeconds / endTime.value;
 
     const canvas = canvasElement.value;
     const canvasWidth = canvas.width;
@@ -36,6 +43,7 @@ function animationLoop() {
 
     canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
     drawProgress(canvasWidth, canvasHeight, progress);
+    drawScrub(canvas, canvasWidth, canvasHeight);
 
     animationFrameId = requestAnimationFrame(animationLoop);
 }
@@ -44,10 +52,61 @@ function drawProgress(canvasWidth, canvasHeight, percentage) {
     canvasContext.fillStyle = "red";
     canvasContext.fillRect(0, 0, canvasWidth * percentage, canvasHeight);
 }
+function drawScrub(canvasWidth, canvasHeight) {
+    if (isSeeking.value) {
+        canvasContext.fillStyle = "white";
+        canvasContext.fillRect(x.value, 0, 2, canvasHeight);
+    }
+}
+
+function onPointerDown(event) {
+    const rect = canvasElement.value.getBoundingClientRect();
+    x.value = event.clientX - rect.left;
+    isSeeking.value = true;
+    seekFromEvent(event);
+}
+
+function onPointerMove(event) {
+    if (isSeeking.value) {
+        const rect = canvasElement.value.getBoundingClientRect();
+        x.value = event.clientX - rect.left;
+        seekFromEvent(event);
+    }
+}
+
+function onPointerUp(event) {
+    isSeeking.value = false;
+}
+
+function seekFromEvent() {
+    // deal with hot reloads
+    if (canvasElement.value === null) return;
+    const rect = canvasElement.value.getBoundingClientRect();
+    const width = rect.width;
+
+    const percentage = Math.min(Math.max(x.value / width, 0), 1);
+    const newTime = percentage * endTime.value;
+
+    emit("seek-to", newTime);
+}
+
 
 onMounted(async () => {
     const canvas = canvasElement.value;
     canvasContext = canvas.getContext("2d");
+
+    canvas.addEventListener("pointerdown", onPointerDown);
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+
+    canvas.addEventListener("pointerenter", () => {
+        isPointerOver.value = true;
+    });
+
+    canvas.addEventListener("pointerleave", () => {
+        isPointerOver.value = false;
+    });
+
 
     resizeCanvasToCssSize(canvas);
     window.addEventListener("resize", () => {
