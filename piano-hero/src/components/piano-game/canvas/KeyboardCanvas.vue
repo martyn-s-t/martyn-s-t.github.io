@@ -1,6 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
 
+const emit = defineEmits(["note-on", "note-off"]);
 const activeNotes = defineModel("activeNotes");
 
 const canvasElement = ref(null);
@@ -12,6 +13,11 @@ const whiteKeyDepressed = "rgba(255, 200, 0, 1)";
 const blackKey = "black";
 const blackKeyDepressed = "rgba(255, 220, 120, 1)";
 
+const keyRects = []; // { midi, x, width, isBlack }
+
+let currentDepressedKey = ref(null);
+
+
 // Resize canvas internal resolution to match CSS size
 function resizeCanvasToCssSize(canvas) {
     const cssWidth = canvas.clientWidth;
@@ -21,17 +27,29 @@ function resizeCanvasToCssSize(canvas) {
     canvas.height = cssHeight;
 }
 
-function animationLoop() {
+function getSizeCalculations() {
     const canvas = canvasElement.value;
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
-
-    canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
 
     const totalWhiteKeys = 52;
     const whiteKeyWidth = canvasWidth / totalWhiteKeys;
     const blackKeyWidth = whiteKeyWidth * 0.6;
     const blackKeyHeight = canvasHeight * 0.6;
+    return {
+        canvasWidth: canvasWidth,
+        canvasHeight: canvasHeight,
+        whiteKeyWidth: whiteKeyWidth,
+        blackKeyWidth: blackKeyWidth,
+        blackKeyHeight: blackKeyHeight
+    };
+}
+
+function animationLoop() {
+
+    const { canvasWidth, canvasHeight, whiteKeyWidth, blackKeyWidth, blackKeyHeight } = getSizeCalculations();
+
+    canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
 
     // Draw white keys
     let whiteKeyIndex = 0;
@@ -47,6 +65,8 @@ function animationLoop() {
             canvasContext.strokeRect(xPosition, 0, whiteKeyWidth, canvasHeight);
 
             whiteKeyIndex++;
+            keyRects.push({ midi, x: xPosition, width: isBlackKey ? blackKeyWidth : whiteKeyWidth, isBlackKey });
+
         }
     }
 
@@ -65,17 +85,62 @@ function animationLoop() {
 
         canvasContext.fillStyle = activeNotes.value[midi] ? blackKeyDepressed : blackKey;
         canvasContext.fillRect(xPosition, 0, blackKeyWidth, blackKeyHeight);
+        keyRects.push({ midi, x: xPosition, width: isBlackKey ? blackKeyWidth : whiteKeyWidth, isBlackKey });
     }
     animationFrameId = requestAnimationFrame(animationLoop);
 }
+
+
+function getMidiFromPointer(event) {
+    const { canvasWidth, canvasHeight, whiteKeyWidth, blackKeyWidth, blackKeyHeight } = getSizeCalculations();
+
+    const rect = canvasElement.value.getBoundingClientRect();
+    const localX = event.clientX - rect.left;
+    const localY = event.clientY - rect.top;
+
+    // Black keys first (they sit on top)
+    for (const key of keyRects.filter(k => k.isBlackKey)) {
+        const withinX = localX >= key.x && localX <= key.x + key.width;
+        const withinY = localY >= 0 && localY <= blackKeyHeight;
+        if (withinX && withinY) return key.midi;
+    }
+
+    // Then white keys
+    for (const key of keyRects.filter(k => !k.isBlackKey)) {
+        if (localX >= key.x && localX <= key.x + key.width) {
+            return key.midi;
+        }
+    }
+
+    return null;
+}
+
+function onPointerDownKey(event) {
+    const midi = getMidiFromPointer(event);
+    if (midi !== null) {
+        currentDepressedKey.value = midi;
+        emit("note-on", midi, 100);
+    }
+}
+function onPointerUpKey(event) {
+    if (currentDepressedKey.value !== null) {
+        emit("note-off", currentDepressedKey.value);
+        currentDepressedKey.value = null;
+    }
+}
+
+
 
 onMounted(() => {
     const canvas = canvasElement.value;
     canvasContext = canvas.getContext("2d");
 
+    canvas.addEventListener("pointerdown", onPointerDownKey);
+    canvas.addEventListener("pointerup", onPointerUpKey);
+    canvas.addEventListener("pointerleave", onPointerUpKey);
+
     window.addEventListener("resize", () => {
         resizeCanvasToCssSize(canvas);
-        drawKeyboard();
     });
 
     resizeCanvasToCssSize(canvas);
