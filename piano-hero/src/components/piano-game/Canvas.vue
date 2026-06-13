@@ -87,21 +87,15 @@ async function initMIDI() {
 
     access.inputs.forEach(input => {
         midiInputs.value.push(input);
-
-        input.onmidimessage = handleMIDIMessage;
     });
 }
-
+function connectMidi(midi) {
+    if (!midi) return;
+    midi.onmidimessage = handleMIDIMessage;
+}
 function handleMIDIMessage(event) {
     const [status, note, velocity] = event.data;
-
-    const command = status & 0xf0;
-
-    if (command === 0x90 && velocity > 0) {
-        // onNoteOn(note, velocity);
-    } else if (command === 0x80 || (command === 0x90 && velocity === 0)) {
-        // onNoteOff(note);
-    }
+    console.log(event);
 }
 
 function noteOn(note, velocity) {
@@ -134,7 +128,7 @@ onMounted(async () => {
 
 <template>
     <v-sheet v-if="midi" class="d-block pa-0 ma-0" style="position: relative; width: 100vw; height: 100vh; overflow: hidden;" elevation="2">
-        <ControllerCanvas v-model:midi="midi" :now="getNow" @play="play" @pause="pause" @stop="stop" @init-midi="initMIDI"/>
+        <ControllerCanvas v-model:midi="midi" v-model:midiInputs="midiInputs" :now="getNow" @play="play" @pause="pause" @stop="stop" @init-midi="initMIDI" @connect-midi="connectMidi" />
         <ProgressCanvas   v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo"/>
         <TrackCanvas      v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @note-play="notePlay" @note-down="noteDown" @note-up="noteUp" />
         <KeyboardCanvas :activeNotes="activeNotes" @note-on="noteOn" @note-off="noteOff"/>
