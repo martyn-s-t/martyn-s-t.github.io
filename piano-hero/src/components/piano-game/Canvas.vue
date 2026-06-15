@@ -8,6 +8,8 @@ import ProgressCanvas from "./canvas/ProgressCanvas.vue";
 import TrackCanvas from "./canvas/TrackCanvas.vue";
 import KeyboardCanvas from "./canvas/KeyboardCanvas.vue";
 
+const emit = defineEmits(["navigate-main-menu"]);
+
 const file = defineModel("file");
 const midi = defineModel("midi");
 
@@ -25,18 +27,24 @@ const tone = {
     synth: null
 };
 
+function navigateMainMenu() {
+    emit("navigate-main-menu");
+}
+
 function getNow() {
     return Tone.now()
 }
 
-function noteDown(midi) { activeNotes[midi] = true; }
-function noteUp(midi) { delete activeNotes[midi]; }
-
-function notePlay(midi, duration) {
+function noteOn(midi) { 
     const noteName = Tone.Frequency(midi, "midi").toNote();
+    activeNotes[midi] = true;
+    tone.synth.triggerAttack(noteName);
 
-    tone.synth.triggerAttackRelease(noteName, duration);
-    noteDown(midi);
+}
+function noteOff(midi) { 
+    const noteName = Tone.Frequency(midi, "midi").toNote();
+    delete activeNotes[midi]; 
+    tone.synth.triggerRelease(noteName);
 }
 
 
@@ -84,29 +92,43 @@ async function loadMidiFile(file) {
 }
 async function initMIDI() {
     const access = await navigator.requestMIDIAccess();
-
+    midiInputs.value = [];
     access.inputs.forEach(input => {
         midiInputs.value.push(input);
     });
 }
 function connectMidi(midi) {
     if (!midi) return;
-    midi.onmidimessage = handleMIDIMessage;
+    midi.value.onmidimessage = handleMIDIMessage;
 }
 function handleMIDIMessage(event) {
-    const [status, note, velocity] = event.data;
-    console.log(event);
-}
+    const [status, note, data2] = event.data;
 
-function noteOn(note, velocity) {
-    activeNotes[note] = true;
-    notePlay(note, 1);
-}
+    const command = status & 0xF0; // message type
+    const channel = status & 0x0F; // channel number
 
-function noteOff(note) {
-    delete activeNotes[note];
-}
+    switch (command) {
+        case 0x90: // Note On
+            if (data2 > 0) {
+                console.log(`Note On: ${note} (velocity: ${data2}) on channel ${channel + 1}`);
+                noteOn(note);
+            } else {
+                console.log(`Note Off: ${note} on channel ${channel + 1}`);
+                noteOff(note);
+            }
+            break;
+        case 0x80: // Note Off
+            console.log(`Note Off: ${note} on channel ${channel + 1}`);
+            noteOff(note);
+            break;
+        case 0xB0: // Control Change
+            console.log(`Control Change: controller ${note}, value ${data2}`);
+            break;
+        default:
+            console.log(`Other MIDI message: ${event.data}`);
+    }
 
+}
 
 onMounted(async () => {
     tone.synth = new Tone.Sampler({
@@ -127,10 +149,10 @@ onMounted(async () => {
 </script>
 
 <template>
-    <v-sheet v-if="midi" class="d-block pa-0 ma-0" style="position: relative; width: 100vw; height: 100vh; overflow: hidden;" elevation="2">
-        <ControllerCanvas v-model:midi="midi" v-model:midiInputs="midiInputs" :now="getNow" @play="play" @pause="pause" @stop="stop" @init-midi="initMIDI" @connect-midi="connectMidi" />
-        <ProgressCanvas   v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo"/>
-        <TrackCanvas      v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @note-play="notePlay" @note-down="noteDown" @note-up="noteUp" />
-        <KeyboardCanvas :activeNotes="activeNotes" @note-on="noteOn" @note-off="noteOff"/>
+    <v-sheet class="d-block pa-0 ma-0" style="position: relative; width: 100vw; height: 100vh; overflow: hidden;" elevation="2">
+        <ControllerCanvas v-model:midi="midi" v-model:midiInputs="midiInputs" :now="getNow" @navigate-main-menu="navigateMainMenu" @play="play" @pause="pause" @stop="stop" @init-midi="initMIDI" @connect-midi="connectMidi" />
+        <ProgressCanvas  v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo" />
+        <TrackCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @note-on="noteOn" @note-off="noteOff"/>
+        <KeyboardCanvas :activeNotes="activeNotes" @note-on="noteOn" @note-off="noteOff" />
     </v-sheet>
 </template>

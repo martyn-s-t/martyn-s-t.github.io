@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 
-const emit = defineEmits(["note-play", "note-down", "note-up"]);
+const emit = defineEmits(["note-on", "note-off"]);
 
 const startTime = defineModel("startTime");
 const pausedAt = defineModel("pausedAt");
@@ -96,10 +96,10 @@ function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSec
     note.yPosition = (elapsedSeconds - note.startTime) * pixelsPerSecond - note.height;
 
     if (isSeeking.value === false && !note.hasPlayed && note.yPosition + note.height >= canvasHeight) {
-        emit("note-play", note.midi, note.duration);
+        // emit("note-play", note.midi, note.duration);
 
-        emit("note-down", note.midi);
-        setTimeout(() => emit("note-up", note.midi), note.duration * 1000);
+        emit("note-on", note.midi);
+        setTimeout(() => emit("note-off", note.midi), note.duration * 1000);
 
         note.hasPlayed = true;
     }
