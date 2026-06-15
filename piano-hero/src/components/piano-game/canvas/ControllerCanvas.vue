@@ -9,7 +9,7 @@ const selectedMidi = ref(null);
 <template >
     <v-row style="width:100vw; height:5vh" justify="center">
         <v-col cols="3" class="d-flex justify-center">
-            <v-select label="Device" :items="midiInputs" density="compact" hide-details="auto" item-title="name" />
+            <v-select label="Device" :items="midiInputs" density="compact" hide-details="auto" item-title="name" return-object />
             <v-btn @click="$emit('connect-midi', selectedMidi)"><v-icon size="x-large">mdi-connection</v-icon></v-btn>
         </v-col>
         <v-col class="d-flex justify-center">
