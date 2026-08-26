@@ -32,7 +32,7 @@ const publicFiles = ref([
 
 watch(selectedFile, async (newValue) => {
     if (newValue) {
-        const response = await fetch(`./public/samples/midi/${newValue}`);
+        const response = await fetch(`./samples/midi/${newValue}`);
         if (!response.ok) {
             console.error("Failed to fetch the MIDI file:", response.statusText);
             return;
