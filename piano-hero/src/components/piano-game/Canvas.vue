@@ -22,6 +22,8 @@ const isSeeking = ref(false);
 const startTime = ref(0);
 const pausedAt = ref(0);
 
+const timeToFall = ref(3);
+
 
 const tone = {
     synth: null
@@ -151,8 +153,8 @@ onMounted(async () => {
 <template>
     <v-sheet class="d-block pa-0 ma-0" style="position: relative; width: 100vw; height: 100vh; overflow: hidden;" elevation="2">
         <ControllerCanvas v-model:midi="midi" v-model:midiInputs="midiInputs" :now="getNow" @navigate-main-menu="navigateMainMenu" @play="play" @pause="pause" @stop="stop" @init-midi="initMIDI" @connect-midi="connectMidi" />
-        <ProgressCanvas  v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo" />
-        <TrackCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" :now="getNow" :isPlaying="isPlaying" @note-on="noteOn" @note-off="noteOff"/>
+        <ProgressCanvas  v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall = "timeToFall" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo" />
+        <TrackCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall = "timeToFall" :now="getNow" :isPlaying="isPlaying" @note-on="noteOn" @note-off="noteOff"/>
         <KeyboardCanvas :activeNotes="activeNotes" @note-on="noteOn" @note-off="noteOff" />
     </v-sheet>
 </template>
