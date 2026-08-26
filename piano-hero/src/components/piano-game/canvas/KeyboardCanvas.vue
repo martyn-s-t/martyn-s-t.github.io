@@ -13,7 +13,7 @@ const whiteKeyDepressed = "rgba(255, 200, 0, 1)";
 const blackKey = "black";
 const blackKeyDepressed = "rgba(255, 220, 120, 1)";
 
-const keyRects = []; // { midi, x, width, isBlack }
+let keyRects = [];
 
 let currentDepressedKey = ref(null);
 
@@ -25,6 +25,22 @@ function resizeCanvasToCssSize(canvas) {
 
     canvas.width = cssWidth;
     canvas.height = cssHeight;
+
+    const { canvasWidth, canvasHeight, whiteKeyWidth, blackKeyWidth, blackKeyHeight } = getSizeCalculations();
+    keyRects = [];
+    let whiteKeyIndex = 0;
+    for (let midi = 21; midi <= 108; midi++) {
+        const note = midi % 12;
+        const isBlackKey = [1, 3, 6, 8, 10].includes(note);
+        if (!isBlackKey) {
+            const xPosition = whiteKeyIndex * whiteKeyWidth;
+            whiteKeyIndex++;
+            keyRects.push({ midi, x: xPosition, width: whiteKeyWidth, height: canvasHeight, isBlackKey });
+        } else {
+            const xPosition = whiteKeyIndex * whiteKeyWidth - blackKeyWidth / 2;
+            keyRects.push({ midi, x: xPosition, width: blackKeyWidth, height: blackKeyHeight, isBlackKey });
+        }
+    }
 }
 
 function getSizeCalculations() {
@@ -46,66 +62,36 @@ function getSizeCalculations() {
 }
 
 function animationLoop() {
-
-    const { canvasWidth, canvasHeight, whiteKeyWidth, blackKeyWidth, blackKeyHeight } = getSizeCalculations();
-
+    const { canvasWidth, canvasHeight } = getSizeCalculations();
     canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
-
     // Draw white keys
-    let whiteKeyIndex = 0;
-    for (let midi = 21; midi <= 108; midi++) {
-        const note = midi % 12;
-        const isBlackKey = [1, 3, 6, 8, 10].includes(note);
-
-        if (!isBlackKey) {
-            const xPosition = whiteKeyIndex * whiteKeyWidth;
-
-            canvasContext.fillStyle = activeNotes.value[midi] ? whiteKeyDepressed : whiteKey;
-            canvasContext.fillRect(xPosition, 0, whiteKeyWidth, canvasHeight);
-            canvasContext.strokeRect(xPosition, 0, whiteKeyWidth, canvasHeight);
-
-            whiteKeyIndex++;
-            keyRects.push({ midi, x: xPosition, width: isBlackKey ? blackKeyWidth : whiteKeyWidth, isBlackKey });
-
-        }
+    for (let key of keyRects.filter(key => !key.isBlackKey)) {
+        canvasContext.fillStyle = activeNotes.value[key.midi] ? whiteKeyDepressed : whiteKey;
+        canvasContext.fillRect(key.x, 0, key.width, key.height);
+        canvasContext.strokeRect(key.x, 0, key.width, key.height);
     }
-
-    // Draw black keys
-    whiteKeyIndex = 0;
-    for (let midi = 21; midi <= 108; midi++) {
-        const note = midi % 12;
-        const isBlackKey = [1, 3, 6, 8, 10].includes(note);
-
-        if (!isBlackKey) {
-            whiteKeyIndex++;
-            continue;
-        }
-
-        const xPosition = whiteKeyIndex * whiteKeyWidth - blackKeyWidth / 2;
-
-        canvasContext.fillStyle = activeNotes.value[midi] ? blackKeyDepressed : blackKey;
-        canvasContext.fillRect(xPosition, 0, blackKeyWidth, blackKeyHeight);
-        keyRects.push({ midi, x: xPosition, width: isBlackKey ? blackKeyWidth : whiteKeyWidth, isBlackKey });
+    for (let key of keyRects.filter(key => key.isBlackKey)) {
+        canvasContext.fillStyle = activeNotes.value[key.midi] ? blackKeyDepressed : blackKey;
+        canvasContext.fillRect(key.x, 0, key.width, key.height);
+        canvasContext.strokeRect(key.x, 0, key.width, key.height);
     }
     animationFrameId = requestAnimationFrame(animationLoop);
 }
 
 
 function getMidiFromPointer(event) {
-    const { canvasWidth, canvasHeight, whiteKeyWidth, blackKeyWidth, blackKeyHeight } = getSizeCalculations();
+    const { blackKeyHeight } = getSizeCalculations();
 
     const rect = canvasElement.value.getBoundingClientRect();
     const localX = event.clientX - rect.left;
     const localY = event.clientY - rect.top;
 
-    // Black keys first (they sit on top)
     for (const key of keyRects.filter(k => k.isBlackKey)) {
         const withinX = localX >= key.x && localX <= key.x + key.width;
         const withinY = localY >= 0 && localY <= blackKeyHeight;
         if (withinX && withinY) return key.midi;
     }
 
-    // Then white keys
     for (const key of keyRects.filter(k => !k.isBlackKey)) {
         if (localX >= key.x && localX <= key.x + key.width) {
             return key.midi;

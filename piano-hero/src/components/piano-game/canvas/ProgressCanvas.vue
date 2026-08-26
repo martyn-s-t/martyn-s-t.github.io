@@ -7,10 +7,12 @@ const midi = defineModel("midi");
 const startTime = defineModel("startTime");
 const pausedAt = defineModel("pausedAt");
 const isSeeking = defineModel("isSeeking");
+const timeToFall = defineModel("timeToFall");
 
 const isPointerOver = ref(false);
-
 const x = ref(0);
+
+const endOfMidi = midi.value.duration + timeToFall.value;
 
 const props = defineProps({
     now: Function,
@@ -22,8 +24,6 @@ let canvasContext = null;
 
 let animationFrameId = null;
 
-let endTime = computed(() => Math.max(...midi.value.tracks.map(track => track.duration)));
-
 function resizeCanvasToCssSize(canvas) {
     const cssWidth = canvas.clientWidth;
     const cssHeight = canvas.clientHeight;
@@ -34,8 +34,10 @@ function resizeCanvasToCssSize(canvas) {
 
 function animationLoop() {
     const now = props.now();
-    const elapsedSeconds = props.isPlaying ? now - startTime.value : pausedAt.value;
-    const progress = elapsedSeconds / endTime.value;
+
+    // if song is finished, elapsed seconds is endOfMidi, is there any point to this? stop progress going above 100%
+    const elapsedSeconds = props.isPlaying ? endOfMidi > now - startTime.value ? now - startTime.value : endOfMidi : pausedAt.value;
+    const progress = (elapsedSeconds) / (midi.value.duration + timeToFall.value);
 
     const canvas = canvasElement.value;
     const canvasWidth = canvas.width;
@@ -85,7 +87,7 @@ function seekFromEvent() {
     const width = rect.width;
 
     const percentage = Math.min(Math.max(x.value / width, 0), 1);
-    const newTime = percentage * endTime.value;
+    const newTime = percentage * (midi.value.duration + timeToFall.value);
 
     emit("seek-to", newTime);
 }

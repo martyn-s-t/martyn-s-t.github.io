@@ -9,7 +9,7 @@ const midi = defineModel("midi");
 const isSeeking = defineModel("isSeeking");
 
 const props = defineProps({ now: Function, isPlaying: Boolean });
-
+const timeToFall = defineModel("timeToFall");
 
 const canvasElement = ref(null);
 let canvasContext = null;
@@ -18,7 +18,7 @@ let fallingNotes = [];
 let animationFrameId = null;
 
 let pixelsPerSecond = 0;
-
+const endOfMidi = midi.value.duration + timeToFall.value;
 
 function resizeCanvasToCssSize(canvas) {
     const cssWidth = canvas.clientWidth;
@@ -37,19 +37,18 @@ async function prepareMidiData(midi) {
     resizeCanvasToCssSize(canvasElement.value);
     const canvasHeight = canvasElement.value.height;
 
-    const timeToFall = 3; // seconds from top to keyboard
-    pixelsPerSecond = canvasHeight / timeToFall;
+    pixelsPerSecond = canvasHeight / timeToFall.value;
 
     fallingNotes = midi.tracks.flatMap(track => {
         return track.notes.map(note => {
             return {
                 midi: note.midi,
                 startTime: note.time,
-                endTime: note.time + note.duration + timeToFall,
+                endTime: note.time + note.duration + timeToFall.value,
                 duration: note.duration,
                 yPosition: -note.duration * pixelsPerSecond,
                 height: note.duration * pixelsPerSecond,
-                speed: canvasHeight / timeToFall,
+                speed: canvasHeight / timeToFall.value,
                 hasStarted: false,
                 hasPlayed: false
             }
@@ -60,8 +59,11 @@ async function prepareMidiData(midi) {
 
 function animationLoop() {
     const now = props.now();
-
-    const deltaTime = props.isPlaying ? now - (animationLoop.lastTime || now) : 0;
+    
+    // if song is finished, elapsed seconds is endOfMidi, is there any point to this? stop progress going above 100%
+    const elapsedSeconds = props.isPlaying ? endOfMidi > now - startTime.value ? now - startTime.value : endOfMidi : pausedAt.value;
+    const progress = (elapsedSeconds) / (midi.value.duration + timeToFall.value);
+    
     animationLoop.lastTime = now;
 
     const canvas = canvasElement.value;
@@ -74,16 +76,14 @@ function animationLoop() {
     const whiteKeyWidth = canvasWidth / totalWhiteKeys;
     const blackKeyWidth = whiteKeyWidth * 0.6;
 
-    const elapsedSeconds = props.isPlaying ? now - startTime.value : pausedAt.value;
-
     let renderedNotes = 0;
     fallingNotes.forEach(note => {
-        renderedNotes += !!renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds, deltaTime);
+        renderedNotes += !!renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds);
     });
     animationFrameId = requestAnimationFrame(animationLoop);
 }
 
-function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds, deltaTime) {
+function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds) {
     if (elapsedSeconds < note.startTime || elapsedSeconds > note.endTime) return;
     note.hasStarted = true;
 
