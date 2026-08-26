@@ -11,6 +11,7 @@ function loadVirtualKeyboard() {
 }
 
 function handleFileSelected(file) {
+    console.log(file);
     selectedFile.value = file;
     view.value = "game";
 }
