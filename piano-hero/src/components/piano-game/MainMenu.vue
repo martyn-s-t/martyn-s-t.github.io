@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch } from "vue";
 import MidiLoader from "./main-menu/MidiLoader.vue";
+import MidiLoaderFromPublic from "./main-menu/MidiLoaderFromPublic.vue";
 
 const emit = defineEmits(["file-selected", "virtual-keyboard"]);
 
@@ -14,34 +15,6 @@ function selectMode(mode) {
             return emit("virtual-keyboard");
     }
 }
-
-const selectedFile = ref(null);
-const publicFiles = ref([
-    "FMA - Brothers.mid",
-    "FMA - Brothers - Part 1-4.mid",
-    "FMA - Brothers - Part 1.mid",
-    "FMA - Brothers - Part 2.mid",
-    "FMA - Brothers - Part 3.mid",
-    "FMA - Brothers - Part 4.mid",
-    "FMA - Brothers - Part 5.mid",
-    "FMA - Brothers - Part 6.mid",
-    "FMA - Brothers - Part 7.mid",
-    "FInal Fantasy XV - Valse di Fantastica.mid",
-    "Final Fantasy XV - Valse di Fantastica - Part 1.mid",
-    "Final Fantasy XV - Valse di Fantastica - Part 2.mid",
-    "Final Fantasy XV - Valse di Fantastica - Part 3.mid",
-]);
-
-watch(selectedFile, async (newValue) => {
-    if (newValue) {
-        const response = await fetch(`./samples/midi/${newValue}`);
-        if (!response.ok) {
-            console.error("Failed to fetch the MIDI file:", response.statusText);
-            return;
-        }
-        fileSelected(response);
-    }
-});
 </script>
 
 <template>
@@ -63,14 +36,7 @@ watch(selectedFile, async (newValue) => {
             <MidiLoader @file-selected="fileSelected" />
         </v-col>
         <v-col>
-            <v-card>
-                <v-card-title>
-                    Load from public
-                </v-card-title>
-                <v-card-text>
-                    <v-select label="Select a file" v-model="selectedFile" :items="publicFiles" hide-details="auto" density="compact" />
-                </v-card-text>
-            </v-card>
+            <MidiLoaderFromPublic @file-selected="fileSelected" />
         </v-col>
         <v-col>
             <v-card>

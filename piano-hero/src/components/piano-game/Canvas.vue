@@ -232,6 +232,6 @@ onMounted(async () => {
         <ControllerCanvas v-model:midi="midi" v-model:midiInputs="midiInputs" :now="getNow" @navigate-main-menu="navigateMainMenu" @play="play" @pause="pause" @stop="stop" @init-midi="initMIDI" @connect-midi="connectMidi" />
         <ProgressCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall="timeToFall" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo" />
         <TrackCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall="timeToFall" :now="getNow" :isPlaying="isPlaying" @request-note-on="requestedNoteOn" />
-        <KeyboardCanvas :activeNotes="activeNotes" @key-down="keyDown" @key-up="keyUp" />
+        <KeyboardCanvas :activeNotes="activeNotes" v-model:requestedNotes="requestedNotes" @key-down="keyDown" @key-up="keyUp" />
     </v-sheet>
 </template>
