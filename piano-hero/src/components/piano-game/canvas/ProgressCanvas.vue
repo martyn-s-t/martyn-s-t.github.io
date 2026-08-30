@@ -37,6 +37,7 @@ function animationLoop() {
 
     // if song is finished, elapsed seconds is endOfMidi, is there any point to this? stop progress going above 100%
     const elapsedSeconds = props.isPlaying ? endOfMidi > now - startTime.value ? now - startTime.value : endOfMidi : pausedAt.value;
+    const totalSeconds = endOfMidi;
     const progress = (elapsedSeconds) / (midi.value.duration + timeToFall.value);
 
     const canvas = canvasElement.value;
@@ -46,6 +47,7 @@ function animationLoop() {
     canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
     drawProgress(canvasWidth, canvasHeight, progress);
     drawScrub(canvas, canvasWidth, canvasHeight);
+    drawDuration(canvasWidth, canvasHeight, elapsedSeconds, endOfMidi);
 
     animationFrameId = requestAnimationFrame(animationLoop);
 }
@@ -54,6 +56,15 @@ function drawProgress(canvasWidth, canvasHeight, percentage) {
     canvasContext.fillStyle = "red";
     canvasContext.fillRect(0, 0, canvasWidth * percentage, canvasHeight);
 }
+function drawDuration(canvasWidth, canvasHeight, elapsedSeconds, totalSeconds) {
+    const text = `${formatTime(elapsedSeconds)} / ${formatTime(totalSeconds)}`;
+
+    canvasContext.fillStyle = "white";
+    canvasContext.font = "20px Arial";
+    canvasContext.textBaseline = "middle";
+    canvasContext.fillText(text, canvasWidth - 150, canvasHeight / 2);
+}
+
 function drawScrub(canvasWidth, canvasHeight) {
     if (isSeeking.value) {
         canvasContext.fillStyle = "white";
@@ -91,6 +102,14 @@ function seekFromEvent() {
 
     emit("seek-to", newTime);
 }
+
+function formatTime(seconds) {
+    seconds = Math.floor(seconds);
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m}:${s.toString().padStart(2, "0")}`;
+}
+
 
 
 onMounted(async () => {

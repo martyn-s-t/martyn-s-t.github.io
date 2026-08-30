@@ -1,7 +1,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount } from "vue";
 
-const emit = defineEmits(["note-on", "note-off"]);
+const emit = defineEmits(["key-down", "key-up"]);
 const activeNotes = defineModel("activeNotes");
 
 const canvasElement = ref(null);
@@ -105,12 +105,12 @@ function onPointerDownKey(event) {
     const midi = getMidiFromPointer(event);
     if (midi !== null) {
         currentDepressedKey.value = midi;
-        emit("note-on", midi, 100);
+        emit("key-down", midi, 100);
     }
 }
 function onPointerUpKey(event) {
     if (currentDepressedKey.value !== null) {
-        emit("note-off", currentDepressedKey.value);
+        emit("key-up", currentDepressedKey.value);
         currentDepressedKey.value = null;
     }
 }

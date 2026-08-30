@@ -5,16 +5,18 @@ import Canvas from "./piano-game/Canvas.vue";
 
 const view = ref("main-menu")
 const selectedFile = ref(null);
+const gameMode = ref(null);
 
 function loadVirtualKeyboard() {
     view.value = "game";
 }
 
-function handleFileSelected(file) {
-    console.log(file);
+function handleFileSelected(file, mode) {
     selectedFile.value = file;
+    gameMode.value = mode;
     view.value = "game";
 }
+
 
 function navigateMainMenu() {
     selectedFile.value = null;
@@ -25,6 +27,6 @@ function navigateMainMenu() {
 <template>
     <v-container fluid class="pa-0">
         <MainMenu v-if="view === 'main-menu'" @file-selected="handleFileSelected" @virtual-keyboard="loadVirtualKeyboard"/>
-        <Canvas v-if="view === 'game'" v-model:file="selectedFile" @navigate-main-menu="navigateMainMenu"/>
+        <Canvas v-if="view === 'game'" v-model:file="selectedFile" v-model:gameMode="gameMode" @navigate-main-menu="navigateMainMenu"/>
     </v-container>
 </template>
