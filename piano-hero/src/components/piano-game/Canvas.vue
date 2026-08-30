@@ -12,8 +12,10 @@ const emit = defineEmits(["navigate-main-menu"]);
 
 const file = defineModel("file");
 const midi = defineModel("midi");
+const gameMode = defineModel("gameMode");
 
-const activeNotes = reactive({});
+const activeNotes = ref({});
+const requestedNotes = ref([]);
 const midiInputs = ref([]);
 
 const isPlaying = ref(false);
@@ -28,6 +30,15 @@ const timeToFall = ref(3);
 const tone = {
     synth: null
 };
+const SAMPLE_URLS = {
+    A1: "A1.mp3",
+    C3: "C3.mp3",
+    C4: "C4.mp3",
+    A4: "A4.mp3"
+};
+
+const voices = {};
+
 
 function navigateMainMenu() {
     emit("navigate-main-menu");
@@ -37,17 +48,88 @@ function getNow() {
     return Tone.now()
 }
 
-function noteOn(midi) { 
-    const noteName = Tone.Frequency(midi, "midi").toNote();
-    activeNotes[midi] = true;
-    tone.synth.triggerAttack(noteName);
+function keyDown(midi) {
+    switch (gameMode.value) {
+        case "listen-song":
+            noteOn(midi);
+            break;
+        case "learn-song":
+            noteOn(midi);
+            const pass = requestedNotes.value.every(note => {
+                return activeNotes.value[note.midi] > 0;
+            });
+            if (pass) {
+                // clear requested notes and continue playing
+                requestedNotes.value = [];
+                play();
+            }
+            break;
+    }
+}
+function keyUp(midi) {
+    switch (gameMode.value) {
+        case "listen-song":
+        case "learn-song":
+            noteOff(midi);
+            break;
+    }
+}
 
+function requestedNoteOn(note) {
+    console.log("requestedNoteOn", note);
+    switch (gameMode.value) {
+        case "listen-song":
+            noteOn(note.midi)
+            setTimeout(() => noteOff(note.midi), note.duration * 1000);
+            break;
+        case "learn-song":
+            requestedNotes.value.push(note);
+            pause();
+            break;
+    }
 }
-function noteOff(midi) { 
+
+function noteOn(midi) {
+    activeNotes.value[midi] ??= 0;
+    activeNotes.value[midi]++;
+
     const noteName = Tone.Frequency(midi, "midi").toNote();
-    delete activeNotes[midi]; 
-    tone.synth.triggerRelease(noteName);
+    const voice = createVoiceFromMaster(tone.synth);
+
+    if (!voices[midi]) voices[midi] = [];
+    voices[midi].push(voice);
+
+    voice.triggerAttack(noteName);
 }
+
+
+function noteOff(midi) {
+    const noteName = Tone.Frequency(midi, "midi").toNote();
+
+    activeNotes.value[midi] ??= 1;
+    activeNotes.value[midi]--;
+
+    if (!voices[midi] || voices[midi].length === 0) return;
+
+    const voice = voices[midi].shift();
+    voice.triggerRelease(noteName);
+}
+
+
+function createVoiceFromMaster(master) {
+    const voice = new Tone.Sampler({
+        urls: SAMPLE_URLS,
+        release: master.release,
+        baseUrl: "/piano-hero/dist/samples/piano/"
+    }).toDestination();
+
+    // Copy buffers from master
+    voice._buffers = master._buffers;
+
+    return voice;
+}
+
+
 
 
 async function play() {
@@ -113,15 +195,15 @@ function handleMIDIMessage(event) {
         case 0x90: // Note On
             if (data2 > 0) {
                 console.log(`Note On: ${note} (velocity: ${data2}) on channel ${channel + 1}`);
-                noteOn(note);
+                keyDown(note);
             } else {
                 console.log(`Note Off: ${note} on channel ${channel + 1}`);
-                noteOff(note);
+                keyUp(note);
             }
             break;
         case 0x80: // Note Off
             console.log(`Note Off: ${note} on channel ${channel + 1}`);
-            noteOff(note);
+            keyUp(note);
             break;
         case 0xB0: // Control Change
             console.log(`Control Change: controller ${note}, value ${data2}`);
@@ -134,12 +216,7 @@ function handleMIDIMessage(event) {
 
 onMounted(async () => {
     tone.synth = new Tone.Sampler({
-        urls: {
-            A1: "A1.mp3",
-            C3: "C3.mp3",
-            C4: "C4.mp3",
-            A4: "A4.mp3"
-        },
+        urls: SAMPLE_URLS,
         release: 1,
         baseUrl: "/piano-hero/dist/samples/piano/"
     }).toDestination();
@@ -153,8 +230,8 @@ onMounted(async () => {
 <template>
     <v-sheet class="d-block pa-0 ma-0" style="position: relative; width: 100vw; height: 100vh; overflow: hidden;" elevation="2">
         <ControllerCanvas v-model:midi="midi" v-model:midiInputs="midiInputs" :now="getNow" @navigate-main-menu="navigateMainMenu" @play="play" @pause="pause" @stop="stop" @init-midi="initMIDI" @connect-midi="connectMidi" />
-        <ProgressCanvas  v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall = "timeToFall" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo" />
-        <TrackCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall = "timeToFall" :now="getNow" :isPlaying="isPlaying" @note-on="noteOn" @note-off="noteOff"/>
-        <KeyboardCanvas :activeNotes="activeNotes" @note-on="noteOn" @note-off="noteOff" />
+        <ProgressCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall="timeToFall" :now="getNow" :isPlaying="isPlaying" @seek-to="seekTo" />
+        <TrackCanvas v-if="midi" v-model:midi="midi" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isSeeking="isSeeking" v-model:timeToFall="timeToFall" :now="getNow" :isPlaying="isPlaying" @request-note-on="requestedNoteOn" />
+        <KeyboardCanvas :activeNotes="activeNotes" @key-down="keyDown" @key-up="keyUp" />
     </v-sheet>
 </template>

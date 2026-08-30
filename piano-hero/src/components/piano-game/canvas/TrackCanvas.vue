@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount } from "vue";
 
-const emit = defineEmits(["note-on", "note-off"]);
+const emit = defineEmits(["request-note-on"]);
 
 const startTime = defineModel("startTime");
 const pausedAt = defineModel("pausedAt");
@@ -77,13 +77,13 @@ function animationLoop() {
     const blackKeyWidth = whiteKeyWidth * 0.6;
 
     let renderedNotes = 0;
-    fallingNotes.forEach(note => {
-        renderedNotes += !!renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds);
+    fallingNotes.forEach((note, index) => {
+        renderedNotes += !!renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds, index);
     });
     animationFrameId = requestAnimationFrame(animationLoop);
 }
 
-function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds) {
+function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds, index) {
     if (elapsedSeconds < note.startTime || elapsedSeconds > note.endTime) return;
     note.hasStarted = true;
 
@@ -95,13 +95,14 @@ function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSec
 
     note.yPosition = (elapsedSeconds - note.startTime) * pixelsPerSecond - note.height;
 
-    if (isSeeking.value === false && !note.hasPlayed && note.yPosition + note.height >= canvasHeight) {
-        // emit("note-play", note.midi, note.duration);
-
-        emit("note-on", note.midi);
-        setTimeout(() => emit("note-off", note.midi), note.duration * 1000);
-
-        note.hasPlayed = true;
+    if (isSeeking.value === false && note.yPosition + note.height >= canvasHeight) {
+        if (note.hasPlayed) {
+            console.log("Already Played", note.midi, index);
+        } else {
+            console.log("Had Not Played", note.midi, index)
+            emit("request-note-on", note);
+            note.hasPlayed = true;
+        }
     }
 
     // Draw
@@ -151,7 +152,7 @@ onBeforeUnmount(() => {
 watch(startTime, (newStartTime) => {
     animationLoop.lastTime = props.now();
     fallingNotes.forEach(note => {
-        if (note.startTime >= newStartTime - props.now()) {
+        if (note.startTime >= newStartTime) {
             note.yPosition = -note.height;
             note.hasPlayed = false;
             note.hasStarted = false;

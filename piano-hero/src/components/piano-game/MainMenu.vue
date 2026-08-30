@@ -3,9 +3,11 @@ import { ref, watch } from "vue";
 import MidiLoader from "./main-menu/MidiLoader.vue";
 
 const emit = defineEmits(["file-selected", "virtual-keyboard"]);
+
 function fileSelected(file, gameMode) { 
-    emit("file-selected", file, gameMode) 
+    emit("file-selected", file, gameMode);
 }
+
 function selectMode(mode) {
     switch (mode) {
         case "virtual-keyboard":
@@ -24,7 +26,7 @@ const publicFiles = ref([
     "FMA - Brothers - Part 5.mid",
     "FMA - Brothers - Part 6.mid",
     "FMA - Brothers - Part 7.mid",
-    "Final Fantasy XV - Valse di Fantastica.mid",
+    "FInal Fantasy XV - Valse di Fantastica.mid",
     "Final Fantasy XV - Valse di Fantastica - Part 1.mid",
     "Final Fantasy XV - Valse di Fantastica - Part 2.mid",
     "Final Fantasy XV - Valse di Fantastica - Part 3.mid",

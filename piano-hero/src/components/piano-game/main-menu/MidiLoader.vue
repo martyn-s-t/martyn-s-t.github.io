@@ -6,41 +6,69 @@ const file = ref(null);
 const isDragging = ref(false);
 
 function handleDrop(event) {
-	isDragging.value = false;
-	const droppedFile = event.dataTransfer.files[0];
+    isDragging.value = false;
+    const droppedFile = event.dataTransfer.files[0];
 
-	if (droppedFile && droppedFile.name.endsWith(".mid")) {
-		file.value = droppedFile;
-		emit("file-selected", droppedFile);
-	}
+    if (droppedFile && droppedFile.name.endsWith(".mid")) {
+        file.value = droppedFile;
+    }
 }
 
 function handleInput(fileName) {
-	if (fileName?.name.endsWith(".mid")) {
-		file.value = fileName;
-		emit("file-selected", fileName);
-	}
+    if (fileName?.name.endsWith(".mid")) {
+        file.value = fileName;
+    }
+}
+
+function selectMode(mode) {
+    if (!file.value) return;
+    emit("file-selected", file.value, mode);
 }
 </script>
 
+
 <template>
-	<v-card width="600" elevation="6" class="pa-6 mx-auto">
-		<v-card-title>
-			Load From File
-		</v-card-title>
-		<v-card-text>
-			<div class="drop-zone" :class="{ 'drop-zone--active': isDragging }" @dragover.prevent="isDragging = true" @dragleave.prevent="isDragging = false" @drop.prevent="handleDrop">
-				<p class="text-center">Drag & drop your MIDI file here</p>
-			</div>
-			<v-file-input accept=".mid" label="Select MIDI file" prepend-icon="mdi-music" outlined dense class="mt-4" @update:modelValue="handleInput" />
-		</v-card-text>
-		<v-card-actions>
-			<v-btn >Listen to Song</v-btn>
-			<v-btn :disabled="true">Learn Song</v-btn>
-			<v-btn :disabled="true">Play Song</v-btn>
-		</v-card-actions>
-	</v-card>
+    <v-card width="600" elevation="6" class="pa-6 mx-auto">
+        <v-card-title>
+            Load From File
+        </v-card-title>
+
+        <v-card-text>
+            <div class="drop-zone"
+                 :class="{ 'drop-zone--active': isDragging }"
+                 @dragover.prevent="isDragging = true"
+                 @dragleave.prevent="isDragging = false"
+                 @drop.prevent="handleDrop">
+                <p class="text-center">Drag & drop your MIDI file here</p>
+            </div>
+
+            <v-file-input
+                accept=".mid"
+                label="Select MIDI file"
+                prepend-icon="mdi-music"
+                outlined
+                dense
+                class="mt-4"
+                @update:modelValue="handleInput"
+            />
+        </v-card-text>
+
+        <v-card-actions>
+            <v-btn :disabled="!file" @click="selectMode('listen-song')">
+                Listen to Song
+            </v-btn>
+
+            <v-btn :disabled="!file" @click="selectMode('learn-song')">
+                Learn Song
+            </v-btn>
+
+            <v-btn :disabled="!file" @click="selectMode('play-song')">
+                Play Song
+            </v-btn>
+        </v-card-actions>
+    </v-card>
 </template>
+
 
 <style scoped>
 .drop-zone {
