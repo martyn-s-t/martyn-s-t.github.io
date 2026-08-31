@@ -66,21 +66,22 @@ function getSizeCalculations() {
 }
 
 function animationLoop() {
-    console.log(requestedNotes.value);
     const { canvasWidth, canvasHeight } = getSizeCalculations();
     canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
     // Draw white keys
     for (let key of keyRects.filter(key => !key.isBlackKey)) {
-        const isExpected = requestedNotes.value.find(note => note.midi === key.midi) !== undefined;
-        const isActive = activeNotes.value[key.midi] > 0;
+         const isExpected = requestedNotes.value.some(note => note.midi === key.midi);
+        const entry = activeNotes.value[key.midi];
+        const isActive = entry && entry.count
 
         canvasContext.fillStyle = isActive ? whiteKeyDepressed : isExpected ? whiteKeyExpected : whiteKey;
         canvasContext.fillRect(key.x, 0, key.width, key.height);
         canvasContext.strokeRect(key.x, 0, key.width, key.height);
     }
     for (let key of keyRects.filter(key => key.isBlackKey)) {
-        const isExpected = requestedNotes.value.find(note => note.midi === key.midi) !== undefined;
-        const isActive = activeNotes.value[key.midi] > 0;
+        const isExpected = requestedNotes.value.some(note => note.midi === key.midi);
+        const entry = activeNotes.value[key.midi];
+        const isActive = entry && entry.count
 
         canvasContext.fillStyle = isActive ? blackKeyDepressed : isExpected ? blackKeyExpected : blackKey;
         canvasContext.fillRect(key.x, 0, key.width, key.height);
