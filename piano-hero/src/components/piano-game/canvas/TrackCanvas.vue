@@ -96,10 +96,7 @@ function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSec
     note.yPosition = (elapsedSeconds - note.startTime) * pixelsPerSecond - note.height;
 
     if (isSeeking.value === false && note.yPosition + note.height >= canvasHeight) {
-        if (note.hasPlayed) {
-            console.log("Already Played", note.midi, index);
-        } else {
-            console.log("Had Not Played", note.midi, index)
+        if (!note.hasPlayed) {
             emit("request-note-on", note);
             note.hasPlayed = true;
         }

@@ -3,6 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 
 const emit = defineEmits(["key-down", "key-up"]);
 const activeNotes = defineModel("activeNotes");
+const requestedNotes = defineModel("requestedNotes");
 
 const canvasElement = ref(null);
 let canvasContext = null;
@@ -10,8 +11,11 @@ let animationFrameId = null;
 
 const whiteKey = "white";
 const whiteKeyDepressed = "rgba(255, 200, 0, 1)";
+const whiteKeyExpected = "rgba(255, 100, 100, 0.8)";
+
 const blackKey = "black";
 const blackKeyDepressed = "rgba(255, 220, 120, 1)";
+const blackKeyExpected = "rgba(255, 120, 120, 1)";
 
 let keyRects = [];
 
@@ -62,16 +66,23 @@ function getSizeCalculations() {
 }
 
 function animationLoop() {
+    console.log(requestedNotes.value);
     const { canvasWidth, canvasHeight } = getSizeCalculations();
     canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
     // Draw white keys
     for (let key of keyRects.filter(key => !key.isBlackKey)) {
-        canvasContext.fillStyle = activeNotes.value[key.midi] ? whiteKeyDepressed : whiteKey;
+        const isExpected = requestedNotes.value.find(note => note.midi === key.midi) !== undefined;
+        const isActive = activeNotes.value[key.midi] > 0;
+
+        canvasContext.fillStyle = isActive ? whiteKeyDepressed : isExpected ? whiteKeyExpected : whiteKey;
         canvasContext.fillRect(key.x, 0, key.width, key.height);
         canvasContext.strokeRect(key.x, 0, key.width, key.height);
     }
     for (let key of keyRects.filter(key => key.isBlackKey)) {
-        canvasContext.fillStyle = activeNotes.value[key.midi] ? blackKeyDepressed : blackKey;
+        const isExpected = requestedNotes.value.find(note => note.midi === key.midi) !== undefined;
+        const isActive = activeNotes.value[key.midi] > 0;
+
+        canvasContext.fillStyle = isActive ? blackKeyDepressed : isExpected ? blackKeyExpected : blackKey;
         canvasContext.fillRect(key.x, 0, key.width, key.height);
         canvasContext.strokeRect(key.x, 0, key.width, key.height);
     }
