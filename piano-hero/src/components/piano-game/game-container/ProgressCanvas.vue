@@ -1,53 +1,46 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, computed } from "vue";
+import { ref, onMounted, onBeforeUnmount } from "vue";
 
 const emit = defineEmits(["seek-to"]);
 
-const midi = defineModel("midi");
+const duration = defineModel("duration");
 const startTime = defineModel("startTime");
 const pausedAt = defineModel("pausedAt");
-const isSeeking = defineModel("isSeeking");
+const isPlaying = defineModel("isPlaying");
 const timeToFall = defineModel("timeToFall");
+const getNow = defineModel("getNow");
+const isSeeking = defineModel("isSeeking");
 
-const isPointerOver = ref(false);
 const x = ref(0);
 
-const endOfMidi = midi.value.duration + timeToFall.value;
-
-const props = defineProps({
-    now: Function,
-    isPlaying: Boolean
-});
 
 const canvasElement = ref(null);
 let canvasContext = null;
-
 let animationFrameId = null;
 
 function resizeCanvasToCssSize(canvas) {
-    const cssWidth = canvas.clientWidth;
-    const cssHeight = canvas.clientHeight;
-
-    canvas.width = cssWidth;
-    canvas.height = cssHeight;
+    canvas.width = canvas.clientWidth;
+    canvas.height = canvas.clientHeight;
 }
 
 function animationLoop() {
-    const now = props.now();
+    const now = getNow.value();
+    
+    const totalSeconds = duration.value + timeToFall.value;
 
-    // if song is finished, elapsed seconds is endOfMidi, is there any point to this? stop progress going above 100%
-    const elapsedSeconds = props.isPlaying ? endOfMidi > now - startTime.value ? now - startTime.value : endOfMidi : pausedAt.value;
-    const totalSeconds = endOfMidi;
-    const progress = (elapsedSeconds) / (midi.value.duration + timeToFall.value);
+    const elapsedSeconds = isPlaying.value ? Math.min(now - startTime.value, totalSeconds) : pausedAt.value;
+
+    const progress = elapsedSeconds / totalSeconds;
 
     const canvas = canvasElement.value;
-    const canvasWidth = canvas.width;
-    const canvasHeight = canvas.height;
+    const w = canvas.width;
+    const h = canvas.height;
 
-    canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
-    drawProgress(canvasWidth, canvasHeight, progress);
-    drawScrub(canvas, canvasWidth, canvasHeight);
-    drawDuration(canvasWidth, canvasHeight, elapsedSeconds, endOfMidi);
+    canvasContext.clearRect(0, 0, w, h);
+
+    drawProgress(w, h, progress);
+    drawScrub(w, h);
+    drawDuration(w, h, elapsedSeconds, totalSeconds);
 
     animationFrameId = requestAnimationFrame(animationLoop);
 }
@@ -80,14 +73,13 @@ function onPointerDown(event) {
 }
 
 function onPointerMove(event) {
-    if (isSeeking.value) {
-        const rect = canvasElement.value.getBoundingClientRect();
-        x.value = event.clientX - rect.left;
-        seekFromEvent(event);
-    }
+    if (!isSeeking.value) return;
+    const rect = canvasElement.value.getBoundingClientRect();
+    x.value = event.clientX - rect.left;
+    seekFromEvent(event);
 }
 
-function onPointerUp(event) {
+function onPointerUp() {
     isSeeking.value = false;
 }
 
@@ -98,7 +90,7 @@ function seekFromEvent() {
     const width = rect.width;
 
     const percentage = Math.min(Math.max(x.value / width, 0), 1);
-    const newTime = percentage * (midi.value.duration + timeToFall.value);
+    const newTime = percentage * (duration.value + timeToFall.value);
 
     emit("seek-to", newTime);
 }
@@ -112,7 +104,7 @@ function formatTime(seconds) {
 
 
 
-onMounted(async () => {
+onMounted(() => {
     const canvas = canvasElement.value;
     canvasContext = canvas.getContext("2d");
 
@@ -120,22 +112,12 @@ onMounted(async () => {
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
 
-    canvas.addEventListener("pointerenter", () => {
-        isPointerOver.value = true;
-    });
-
-    canvas.addEventListener("pointerleave", () => {
-        isPointerOver.value = false;
-    });
-
-
     resizeCanvasToCssSize(canvas);
-    window.addEventListener("resize", () => {
-        resizeCanvasToCssSize(canvas);
-    });
+    window.addEventListener("resize", () => resizeCanvasToCssSize(canvas));
 
     animationLoop();
 });
+
 onBeforeUnmount(() => {
     cancelAnimationFrame(animationFrameId);
 });

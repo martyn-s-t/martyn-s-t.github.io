@@ -1,32 +1,43 @@
 <script setup>
-import { ref } from "vue";
+import { ref, onMounted } from "vue";
+
 import MainMenu from "./piano-game/MainMenu.vue";
-import Canvas from "./piano-game/Canvas.vue";
+import SongManager from "./piano-game/SongManager.vue";
+import SongModeSelect from "./piano-game/SongModeSelect.vue";
+import GameContainer from "./piano-game/GameContainer.vue";
+import SettingsPage from "./piano-game/SettingsPage.vue";
 
-const view = ref("main-menu")
-const selectedFile = ref(null);
-const gameMode = ref(null);
+const views = {
+    "main-menu": MainMenu,
+    "song-manager": SongManager,
+    "song-mode-select": SongModeSelect,
+    "game": GameContainer,
+    "settings": SettingsPage
+};
 
-function loadVirtualKeyboard() {
-    view.value = "game";
+const currentView = ref("main-menu");
+
+const selectedMidiDevice = ref(null);
+const requireHoldAllKeys = ref(true);
+const pressKeyLeeway = ref(100);
+
+const selectedSong = ref(null);
+const selectedMode = ref(null);
+const selectedHand = ref(null);
+
+function navigate(view) {
+    console.log(`Navigating to view: ${view}`);
+    currentView.value = view;
 }
 
-function handleFileSelected(file, mode) {
-    selectedFile.value = file;
-    gameMode.value = mode;
-    view.value = "game";
-}
+onMounted(() => {
+    selectedMidiDevice.value = localStorage.getItem("selectedMidiDevice") || null;
+    requireHoldAllKeys.value = localStorage.getItem("requireHoldAllKeys") || null;
+    pressKeyLeeway.value = localStorage.getItem("pressKeyLeeway") || 100;
+});
 
-
-function navigateMainMenu() {
-    selectedFile.value = null;
-    view.value = 'main-menu';
-}
 </script>
 
 <template>
-    <v-container fluid class="pa-0">
-        <MainMenu v-if="view === 'main-menu'" @file-selected="handleFileSelected" @virtual-keyboard="loadVirtualKeyboard"/>
-        <Canvas v-if="view === 'game'" v-model:file="selectedFile" v-model:gameMode="gameMode" @navigate-main-menu="navigateMainMenu"/>
-    </v-container>
+    <component :is="views[currentView]" v-model:selectedMidiDevice="selectedMidiDevice" v-model:requireHoldAllKeys="requireHoldAllKeys" v-model:pressKeyLeeway="pressKeyLeeway" v-model:selectedSong="selectedSong" v-model:selectedMode="selectedMode" @navigate="navigate" />
 </template>

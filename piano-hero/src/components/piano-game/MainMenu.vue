@@ -1,54 +1,13 @@
 <script setup>
-import { ref, watch } from "vue";
-import MidiLoader from "./main-menu/MidiLoader.vue";
-import MidiLoaderFromPublic from "./main-menu/MidiLoaderFromPublic.vue";
-
-const emit = defineEmits(["file-selected", "virtual-keyboard"]);
-
-function fileSelected(file, gameMode) { 
-    emit("file-selected", file, gameMode);
-}
-
-function selectMode(mode) {
-    switch (mode) {
-        case "virtual-keyboard":
-            return emit("virtual-keyboard");
-    }
-}
+const emit = defineEmits(["navigate"]);
 </script>
 
 <template>
-    <v-row>
-        <v-col>
-            <v-card>
-                <v-card-title>
-                    Load Virtual Keyboard
-                </v-card-title>
-                <v-card-text>
-                    something soemthing
-                </v-card-text>
-                <v-card-actions>
-                    <v-btn @click="selectMode('virtual-keyboard')">Load Virtual Keyboard</v-btn>
-                </v-card-actions>
-            </v-card>
-        </v-col>
-        <v-col>
-            <MidiLoader @file-selected="fileSelected" />
-        </v-col>
-        <v-col>
-            <MidiLoaderFromPublic @file-selected="fileSelected" />
-        </v-col>
-        <v-col>
-            <v-card>
-                <v-card-title>
-                    Midi Tools
-                </v-card-title>
-                <v-card-text>
-                    something soemthing
-                </v-card-text>
-            </v-card>
-        </v-col>
-    </v-row>
+    <v-container class="pa-4" style="max-width: 400px;">
+        <v-btn block class="mb-4" color="primary" @click="emit('navigate', 'song-manager')">Play a Song</v-btn>
+        <v-btn block class="mb-4" color="primary" @click="emit('navigate', 'free-play')">Free Play</v-btn>
+        <v-btn block color="primary" @click="emit('navigate', 'settings')">Settings</v-btn>
+    </v-container>
 </template>
 
 <style scoped></style>
