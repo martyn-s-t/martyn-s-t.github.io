@@ -8,6 +8,7 @@ const selectedFile = ref(null);
 const gameMode = ref(null);
 
 function loadVirtualKeyboard() {
+    gameMode.value = "free-play";
     view.value = "game";
 }
 
