@@ -14,6 +14,8 @@ const file = defineModel("file");
 const midi = defineModel("midi");
 const gameMode = defineModel("gameMode");
 
+const requireHoldAllKeys = ref(false);
+
 const activeNotes = ref({});
 const requestedNotes = ref([]);
 const midiInputs = ref([]);
@@ -58,11 +60,17 @@ function keyDown(midi) {
             break;
         case "learn-song":
             noteOn(midi);
+
+            for (const requestedNote of requestedNotes.value) {
+                if (requestedNote.midi === midi) {
+                    requestedNote.pressed = true;
+                }
+            }
             const pass = requestedNotes.value.every(note => {
+                if (requireHoldAllKeys.value === false) return note.pressed;
+
                 const entry = activeNotes.value[note.midi];
-                if (!entry) return false;
-                if (entry.count <= 0) return false;
-                return true;
+                return entry && entry.count > 0;
             });
 
             if (pass) {
@@ -96,10 +104,19 @@ function requestedNoteOn(note) {
             if (entry) {
                 const age = now - entry.pressedAt;
                 if (age <= keyPressLeyway.value) {
+                    requestedNotes.value.push({
+                        midi: midi,
+                        pressed: true,
+                        hand: note.hand,
+                    });
                     return;
                 }
             }
-            requestedNotes.value.push(note);
+            requestedNotes.value.push({
+                midi: midi,
+                pressed: false,
+                hand: note.hand,
+            });
             pause();
             break;
     }

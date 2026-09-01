@@ -9,20 +9,19 @@ const canvasElement = ref(null);
 let canvasContext = null;
 let animationFrameId = null;
 
-const whiteKey = "white";
-const whiteKeyDepressed = "rgba(255, 200, 0, 1)";
-const whiteKeyExpected = "rgba(255, 100, 100, 0.8)";
+const whiteKey            = "white";
+const whiteKeyDepressed   = "rgba(255, 200, 0, 1)";
+const whiteKeyLeftExpected  = "rgba(100, 150, 255, 0.8)";
+const whiteKeyRightExpected = "rgba(255, 100, 100, 0.8)";
 
-const blackKey = "black";
-const blackKeyDepressed = "rgba(255, 220, 120, 1)";
-const blackKeyExpected = "rgba(255, 120, 120, 1)";
+const blackKey            = "black";
+const blackKeyDepressed   = "rgba(255, 220, 120, 1)";
+const blackKeyLeftExpected  = "rgba(120, 170, 255, 1)";
+const blackKeyRightExpected = "rgba(255, 120, 120, 1)";
 
 let keyRects = [];
-
 let currentDepressedKey = ref(null);
 
-
-// Resize canvas internal resolution to match CSS size
 function resizeCanvasToCssSize(canvas) {
     const cssWidth = canvas.clientWidth;
     const cssHeight = canvas.clientHeight;
@@ -30,19 +29,22 @@ function resizeCanvasToCssSize(canvas) {
     canvas.width = cssWidth;
     canvas.height = cssHeight;
 
-    const { canvasWidth, canvasHeight, whiteKeyWidth, blackKeyWidth, blackKeyHeight } = getSizeCalculations();
+    const { canvasHeight, whiteKeyWidth, blackKeyWidth, blackKeyHeight } = getSizeCalculations();
+
     keyRects = [];
     let whiteKeyIndex = 0;
+
     for (let midi = 21; midi <= 108; midi++) {
         const note = midi % 12;
         const isBlackKey = [1, 3, 6, 8, 10].includes(note);
+
         if (!isBlackKey) {
-            const xPosition = whiteKeyIndex * whiteKeyWidth;
+            const x = whiteKeyIndex * whiteKeyWidth;
             whiteKeyIndex++;
-            keyRects.push({ midi, x: xPosition, width: whiteKeyWidth, height: canvasHeight, isBlackKey });
+            keyRects.push({ midi, x, width: whiteKeyWidth, height: canvasHeight, isBlackKey });
         } else {
-            const xPosition = whiteKeyIndex * whiteKeyWidth - blackKeyWidth / 2;
-            keyRects.push({ midi, x: xPosition, width: blackKeyWidth, height: blackKeyHeight, isBlackKey });
+            const x = whiteKeyIndex * whiteKeyWidth - blackKeyWidth / 2;
+            keyRects.push({ midi, x, width: blackKeyWidth, height: blackKeyHeight, isBlackKey });
         }
     }
 }
@@ -68,40 +70,63 @@ function getSizeCalculations() {
 function animationLoop() {
     const { canvasWidth, canvasHeight } = getSizeCalculations();
     canvasContext.clearRect(0, 0, canvasWidth, canvasHeight);
-    // Draw white keys
-    for (let key of keyRects.filter(key => !key.isBlackKey)) {
-         const isExpected = requestedNotes.value.some(note => note.midi === key.midi);
-        const entry = activeNotes.value[key.midi];
-        const isActive = entry && entry.count
 
-        canvasContext.fillStyle = isActive ? whiteKeyDepressed : isExpected ? whiteKeyExpected : whiteKey;
+    // White keys
+    for (let key of keyRects.filter(k => !k.isBlackKey)) {
+        const entry = activeNotes.value[key.midi];
+        const isActive = entry && entry.count;
+
+        const isLeftExpected  = requestedNotes.value.some(n => n.midi === key.midi && !n.pressed && n.hand === "left");
+        const isRightExpected = requestedNotes.value.some(n => n.midi === key.midi && !n.pressed && n.hand === "right");
+
+        let fill =
+            isActive        ? whiteKeyDepressed :
+            isLeftExpected  ? whiteKeyLeftExpected :
+            isRightExpected ? whiteKeyRightExpected :
+                              whiteKey;
+
+        canvasContext.fillStyle = fill;
         canvasContext.fillRect(key.x, 0, key.width, key.height);
         canvasContext.strokeRect(key.x, 0, key.width, key.height);
     }
-    for (let key of keyRects.filter(key => key.isBlackKey)) {
-        const isExpected = requestedNotes.value.some(note => note.midi === key.midi);
-        const entry = activeNotes.value[key.midi];
-        const isActive = entry && entry.count
 
-        canvasContext.fillStyle = isActive ? blackKeyDepressed : isExpected ? blackKeyExpected : blackKey;
+    // Black keys
+    for (let key of keyRects.filter(k => k.isBlackKey)) {
+        const entry = activeNotes.value[key.midi];
+        const isActive = entry && entry.count;
+
+        const isLeftExpected  = requestedNotes.value.some(n => n.midi === key.midi && !n.pressed && n.hand === "left");
+        const isRightExpected = requestedNotes.value.some(n => n.midi === key.midi && !n.pressed && n.hand === "right");
+
+        let fill =
+            isActive        ? blackKeyDepressed :
+            isLeftExpected  ? blackKeyLeftExpected :
+            isRightExpected ? blackKeyRightExpected :
+                              blackKey;
+
+        canvasContext.fillStyle = fill;
         canvasContext.fillRect(key.x, 0, key.width, key.height);
         canvasContext.strokeRect(key.x, 0, key.width, key.height);
     }
+
     animationFrameId = requestAnimationFrame(animationLoop);
 }
 
 
 function getMidiFromPointer(event) {
     const { blackKeyHeight } = getSizeCalculations();
-
     const rect = canvasElement.value.getBoundingClientRect();
+
     const localX = event.clientX - rect.left;
     const localY = event.clientY - rect.top;
 
     for (const key of keyRects.filter(k => k.isBlackKey)) {
-        const withinX = localX >= key.x && localX <= key.x + key.width;
-        const withinY = localY >= 0 && localY <= blackKeyHeight;
-        if (withinX && withinY) return key.midi;
+        if (
+            localX >= key.x &&
+            localX <= key.x + key.width &&
+            localY >= 0 &&
+            localY <= blackKeyHeight
+        ) return key.midi;
     }
 
     for (const key of keyRects.filter(k => !k.isBlackKey)) {
@@ -120,13 +145,13 @@ function onPointerDownKey(event) {
         emit("key-down", midi, 100);
     }
 }
-function onPointerUpKey(event) {
+
+function onPointerUpKey() {
     if (currentDepressedKey.value !== null) {
         emit("key-up", currentDepressedKey.value);
         currentDepressedKey.value = null;
     }
 }
-
 
 
 onMounted(() => {
@@ -137,9 +162,7 @@ onMounted(() => {
     canvas.addEventListener("pointerup", onPointerUpKey);
     canvas.addEventListener("pointerleave", onPointerUpKey);
 
-    window.addEventListener("resize", () => {
-        resizeCanvasToCssSize(canvas);
-    });
+    window.addEventListener("resize", () => resizeCanvasToCssSize(canvas));
 
     resizeCanvasToCssSize(canvas);
     animationLoop();
