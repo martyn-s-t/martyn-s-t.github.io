@@ -142,7 +142,7 @@ function onPointerDownKey(event) {
     const midi = getMidiFromPointer(event);
     if (midi !== null) {
         currentDepressedKey.value = midi;
-        emit("key-down", midi, 100);
+        emit("key-down", midi, 0.9);
     }
 }
 

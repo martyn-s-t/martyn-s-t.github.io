@@ -1,5 +1,5 @@
 <script setup>
-import { onMounted, onBeforeUnmount } from "vue";
+import { onMounted, onBeforeUnmount, ref } from "vue";
 
 // Shared engine
 import useGameEngine from "../../engine/useGameEngine.js";
@@ -11,6 +11,8 @@ import ProgressCanvas from "./game-container/ProgressCanvas.vue";
 import TrackCanvas from "./game-container/TrackCanvas.vue";
 
 const emit = defineEmits(["navigate"]);
+
+const midiDevices = ref([]);
 
 const song = defineModel("selectedSong");
 const mode = defineModel("selectedMode");
@@ -27,25 +29,30 @@ const {
     getNow,
 
     isPlaying,
+    isSeeking,
+    isRecording,
+
     startTime,
     pausedAt,
-    isSeeking,
 
     play,
     pause,
     stop,
     seekTo,
 
+    recOn,
+    recOff,
+    saveRec,
 
+    handleMIDIMessage,
     onKeyDown,
     onKeyUp,
 
 
     activeNotes,
-    requestedNotes, 
-    requestedNoteOn,
+    requestedNotes,
 
-
+    startFreePlay,
     startListen,
     startLearn,
     startPlay,
@@ -56,14 +63,35 @@ const {
 } = useGameEngine();
 
 
-function navigate() {
+function navigate(view = "song-mode-select") {
     stop();
-    emit("navigate", "song-mode-select");
+    emit("navigate", view);
+}
+
+async function initMIDI() {
+    const access = await navigator.requestMIDIAccess();
+
+    midiDevices.value = [];
+    access.inputs.forEach(input => midiDevices.value.push(input));
 }
 
 onMounted(async () => {
-    let midi = JSON.parse(localStorage.getItem(`song-${song.value.id}`));
+    let midiDeviceId = localStorage.getItem("midiDevice");
+    
+    await initMIDI()
     await initAudio();
+    
+    let selectedMidiDevice = midiDevices.value.find(device => device.id === midiDeviceId);
+    if (selectedMidiDevice) {
+        selectedMidiDevice.onmidimessage = handleMIDIMessage;
+    }
+    
+    if (mode.value === "free") {
+        startFreePlay(); 
+        return
+    }
+
+    let midi = JSON.parse(localStorage.getItem(`song-${song.value.id}`));
     loadMidi(midi);
 
     if (mode.value === "listen") startListen();
@@ -78,10 +106,10 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="game-canvas-layer">
-        <ControllerCanvas @pause="pause" @play="play" @stop="stop" @navigate="navigate" />
+        <ControllerCanvas v-model:mode="mode" v-model:isRecording="isRecording" @pause="pause" @play="play" @stop="stop" @rec-on="recOn" @rec-off="recOff" @save-rec="saveRec" @navigate="navigate" />
         <KeyboardCanvas v-model:activeNotes="activeNotes" v-model:requestedNotes="requestedNotes" @key-down="onKeyDown" @key-up="onKeyUp" />
-        <ProgressCanvas :duration="duration" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isPlaying="isPlaying" v-model:isSeeking="isSeeking" v-model:timeToFall="timeToFall" v-model:getNow="getNow" @seek-to="seekTo" />
-        <TrackCanvas :notes="fallingNotes" :startTime="startTime" :timeToFall="timeToFall" :isSeeking="isSeeking" :isPlaying="isPlaying" :duration="duration" :pausedAt="pausedAt" :getNow="getNow"  @request-note-on="requestedNoteOn" />
+        <ProgressCanvas v-if="mode !== 'free'" :duration="duration" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isPlaying="isPlaying" v-model:isSeeking="isSeeking" v-model:timeToFall="timeToFall" v-model:getNow="getNow" @seek-to="seekTo" />
+        <TrackCanvas :notes="fallingNotes" :startTime="startTime" :timeToFall="timeToFall" :isSeeking="isSeeking" :isPlaying="isPlaying" :duration="duration" :pausedAt="pausedAt" :getNow="getNow" />
     </div>
 </template>
 
