@@ -17,10 +17,6 @@ const views = {
 
 const currentView = ref("main-menu");
 
-const selectedMidiDevice = ref(null);
-const requireHoldAllKeys = ref(true);
-const pressKeyLeeway = ref(100);
-
 const selectedSong = ref(null);
 const selectedMode = ref(null);
 const selectedHand = ref(null);
@@ -30,14 +26,8 @@ function navigate(view) {
     currentView.value = view;
 }
 
-onMounted(() => {
-    selectedMidiDevice.value = localStorage.getItem("selectedMidiDevice") || null;
-    requireHoldAllKeys.value = localStorage.getItem("requireHoldAllKeys") || null;
-    pressKeyLeeway.value = localStorage.getItem("pressKeyLeeway") || 100;
-});
-
 </script>
 
 <template>
-    <component :is="views[currentView]" v-model:selectedMidiDevice="selectedMidiDevice" v-model:requireHoldAllKeys="requireHoldAllKeys" v-model:pressKeyLeeway="pressKeyLeeway" v-model:selectedSong="selectedSong" v-model:selectedMode="selectedMode" @navigate="navigate" />
+    <component :is="views[currentView]" v-model:selectedSong="selectedSong" v-model:selectedMode="selectedMode" v-model:selectedHand="selectedHand" @navigate="navigate" />
 </template>

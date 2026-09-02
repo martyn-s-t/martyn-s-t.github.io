@@ -2,13 +2,10 @@
 import { ref, onMounted } from "vue";
 const emit = defineEmits(["navigate"]);
 
-const selectedMidiDevice = defineModel("selectedMidiDevice");
-const requireHoldAllKeys = defineModel("requireHoldAllKeys");
-const pressKeyLeeway = defineModel("pressKeyLeeway");
 
-const selectedMidiDeviceLocal = ref(null);
-const requireHoldAllKeysLocal = ref(true);
-const pressKeyLeewayLocal = ref(100);
+const selectedMidiDevice = ref(localStorage.getItem("midiDevice"));
+const requireHoldAllKeys = ref(localStorage.getItem("requireHoldAllKeys"));
+const pressKeyLeeway = ref(localStorage.getItem("pressKeyLeeway"));
 
 const midiDevices = ref([]);
 
@@ -17,27 +14,17 @@ async function initMIDI() {
 
     midiDevices.value = [];
     access.inputs.forEach(input => midiDevices.value.push(input));
-
 }
 
 onMounted(async () => {
     await initMIDI()
-    selectedMidiDeviceLocal.value = selectedMidiDevice.value;
-    requireHoldAllKeysLocal.value = requireHoldAllKeys.value;
-    pressKeyLeewayLocal.value = pressKeyLeeway.value;
 });
 
 
 function saveSettings() {
-    selectedMidiDevice.value = selectedMidiDeviceLocal.value;
-    requireHoldAllKeys.value = requireHoldAllKeysLocal.value;
-    pressKeyLeeway.value = pressKeyLeewayLocal.value;
-
     localStorage.setItem("midiDevice", selectedMidiDevice.value);
     localStorage.setItem("requireHoldAllKeys", requireHoldAllKeys.value);
     localStorage.setItem("pressKeyLeeway", pressKeyLeeway.value);
-
-    console.log(localStorage.getItem("midiDevice"));
 
     emit("navigate", "main-menu");
 }
@@ -53,12 +40,12 @@ function saveSettings() {
 
                 <v-row class="mb-4 align-center">
                     <v-col cols="12">
-                        <v-switch label="Require Hold All Keys" v-model="requireHoldAllKeysLocal" hide-details density="compact" />
+                        <v-switch label="Require Hold All Keys" v-model="requireHoldAllKeys" hide-details density="compact" />
                     </v-col>
                 </v-row>
                 <v-row class="mb-4 align-center">
                     <v-col cols="12">
-                        <v-text-field label="Press Key Leeway (ms)" v-model="pressKeyLeewayLocal" type="number" hide-details density="compact" />
+                        <v-text-field label="Press Key Leeway (ms)" v-model="pressKeyLeeway" type="number" hide-details density="compact" />
                     </v-col>
                 </v-row>
             </v-card-text>
@@ -73,7 +60,7 @@ function saveSettings() {
                     </v-col>
 
                     <v-col cols="10">
-                        <v-select label="Input Device" :items="midiDevices" item-title="name" return-object v-model="selectedMidiDeviceLocal" hide-details density="compact" />
+                        <v-select label="Input Device" :items="midiDevices" item-title="name" item-value="id" v-model="selectedMidiDevice" hide-details density="compact" />
                     </v-col>
                 </v-row>
             </v-card-text>

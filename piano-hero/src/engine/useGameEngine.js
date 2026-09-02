@@ -1,6 +1,7 @@
 // src/engine/useGameEngine.js
 import { ref } from "vue";
 import * as Tone from "tone";
+import { Midi } from "@tonejs/midi";
 
 export default function useGameEngine() {
     const notes = ref([]);
@@ -8,18 +9,23 @@ export default function useGameEngine() {
 
     const activeNotes = ref({});
     const requestedNotes = ref([]);
+    const recordedNotes = ref([]);
 
     const currentTime = ref(0);
     const duration = ref(0);
 
     const isPlaying = ref(false);
-    const startTime = ref(0);
-    const pausedAt = ref(0);
     const isSeeking = ref(false);
+    const isRecording = ref(false);
+
+    const startTime = ref(0);
+    const recordStartTime = ref(0);
+    const pausedAt = ref(0);
 
     const requireHoldAllKeys = ref(localStorage.getItem("requireHoldAllKeys") === "true");
     const keyPressLeeway = ref(Number(localStorage.getItem("keyPressLeeway") || 0));
     const timeToFall = ref(3);
+    const ppq = ref(384);
 
     const SAMPLE_URLS = {
         A1: "A1.mp3",
@@ -52,14 +58,39 @@ export default function useGameEngine() {
         return voice;
     }
 
-    function noteOn(midi) {
+    function handleMIDIMessage(event) {
+        const [status, note, data2] = event.data;
+
+        const command = status & 0xF0; // message type
+        const channel = status & 0x0F; // channel number
+
+        switch (command) {
+            case 0x90: // Note On
+                if (data2 > 0) {
+                    onKeyDown(note);
+                } else {
+                    onKeyUp(note);
+                }
+                break;
+            case 0x80: // Note Off
+                onKeyUp(note);
+                break;
+            case 0xB0: // Control Change
+                break;
+            default:
+            // console.log(`Other MIDI message: ${event.data}`);
+        }
+    }
+
+    function noteOn(midi, velocity = 1) {
         const now = getNow();
 
-        activeNotes.value[midi] ??= { count: 0, pressedAt: now };
+        activeNotes.value[midi] ??= { count: 0, pressedAt: now, velocity: 0 };
         const entry = activeNotes.value[midi];
 
         entry.count++;
         entry.pressedAt = now;
+        entry.velocity = velocity;
 
         const noteName = Tone.Frequency(midi, "midi").toNote();
         const voice = createVoice();
@@ -85,8 +116,8 @@ export default function useGameEngine() {
         voice.triggerRelease(noteName);
     }
 
-    function onKeyDown(midi, velocity = 100) {
-        noteOn(midi);
+    function onKeyDown(midi, velocity = 1) {
+        noteOn(midi, velocity);
 
         // Learn mode: mark requested notes as pressed
         if (mode === "learn") {
@@ -109,6 +140,25 @@ export default function useGameEngine() {
     }
 
     function onKeyUp(midi) {
+        if (mode === "free") {
+            if (isRecording.value) {
+                const entry = activeNotes.value[midi];
+                if (entry) {
+                    const duration = getNow() - entry.pressedAt;
+                    const start = entry.pressedAt - recordStartTime.value;
+                    const note = {
+                        "duration": duration,
+                        "durationTicks": Math.round(duration * ppq.value),
+                        "midi": midi,
+                        "name": Tone.Frequency(midi, "midi").toNote(),
+                        "ticks": Math.round(start * ppq.value),
+                        "time": start,
+                        "velocity": entry.velocity
+                    }
+                    recordedNotes.value.push(note);
+                };
+            }
+        }
         noteOff(midi);
     }
 
@@ -126,7 +176,7 @@ export default function useGameEngine() {
         if (mode === "learn") {
             if (entry) {
                 const age = now - entry.pressedAt;
-                if (age <= keyPressLeyway.value) {
+                if (age <= keyPressLeeway.value) {
                     requestedNotes.value.push({
                         midi: midi,
                         pressed: true,
@@ -156,6 +206,8 @@ export default function useGameEngine() {
     }
 
     async function play() {
+        if (isPlaying.value) return;
+
         await Tone.start();
 
         if (pausedAt.value) {
@@ -180,7 +232,7 @@ export default function useGameEngine() {
         startTime.value = 0;
 
         activeNotes.value = {};
-        requestedNotes.value = {};
+        requestedNotes.value = [];
     }
 
 
@@ -205,10 +257,43 @@ export default function useGameEngine() {
     }
 
 
+    function recOn() {
+        recordedNotes.value = [];
+        recordStartTime.value = getNow();
+        isRecording.value = true;
+    }
+    function recOff() {
+        isRecording.value = false;
+    }
+
+    function saveRec() {
+        const midi = new Midi();
+        const track = midi.addTrack();
+        recordedNotes.value.forEach(note => track.addNote(note));
+
+
+        const bytes = midi.toArray();
+        const blob = new Blob([bytes], { type: "audio/midi" });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = `Recording-${Date.now()}.mid`;
+        a.click();
+
+        URL.revokeObjectURL(url);
+    }
 
     let mode = "listen";
-    let hand = "both";
 
+    function startFreePlay() {
+        mode = "free";
+        stop();
+
+        currentTime.value = 0;
+        fallingNotes.value = [];
+    }
     function startListen() {
         mode = "listen";
         play();
@@ -226,8 +311,8 @@ export default function useGameEngine() {
         play();
     }
 
+
     function loadMidi(midi) {
-        console.log(midi);
         const left = midi.tracks[0]?.notes || [];
         const right = midi.tracks[1]?.notes || [];
 
@@ -333,12 +418,15 @@ export default function useGameEngine() {
         currentTime,
         duration,
         isPlaying,
+        isSeeking,
+        isRecording,
+
         startTime,
         pausedAt,
         timeToFall,
-        isSeeking,
 
         // input
+        handleMIDIMessage,
         onKeyDown,
         onKeyUp,
 
@@ -348,7 +436,13 @@ export default function useGameEngine() {
         stop,
         seekTo,
 
+        // recording
+        recOn,
+        recOff,
+        saveRec,
+
         // modes
+        startFreePlay,
         startListen,
         startLearn,
         startPlay,

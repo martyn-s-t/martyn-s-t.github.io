@@ -198,8 +198,6 @@ function stop() {
     // Reset active notes
     activeNotes.value = {};
     requestedNotes.value = [];
-    activeNotes.value = {};
-    requestedNotes.value = [];
 }
 
 function seekTo(seconds) {
