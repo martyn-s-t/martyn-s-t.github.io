@@ -14,6 +14,8 @@ const file = defineModel("file");
 const midi = defineModel("midi");
 const gameMode = defineModel("gameMode");
 
+const requireHoldAllKeys = ref(false);
+
 const activeNotes = ref({});
 const requestedNotes = ref([]);
 const midiInputs = ref([]);
@@ -58,11 +60,14 @@ function keyDown(midi) {
             break;
         case "learn-song":
             noteOn(midi);
+
+            for (const requestedNote of requestedNotes.value) {
+                if (requestedNote.midi === midi) {
+                    requestedNote.pressed = true;
+                }
+            }
             const pass = requestedNotes.value.every(note => {
-                const entry = activeNotes.value[note.midi];
-                if (!entry) return false;
-                if (entry.count <= 0) return false;
-                return true;
+                return activeNotes.value[note.midi] > 0;
             });
 
             if (pass) {
@@ -74,6 +79,7 @@ function keyDown(midi) {
 }
 function keyUp(midi) {
     switch (gameMode.value) {
+        case "free-play":
         case "free-play":
         case "listen-song":
         case "learn-song":
@@ -87,18 +93,16 @@ function requestedNoteOn(note) {
     const now = performance.now();
     const entry = activeNotes.value[midi];
 
+    const midi = note.midi;
+    const now = performance.now();
+    const entry = activeNotes.value[midi];
+
     switch (gameMode.value) {
         case "listen-song":
             noteOn(note.midi)
             setTimeout(() => noteOff(note.midi), note.duration * 1000);
             break;
         case "learn-song":
-            if (entry) {
-                const age = now - entry.pressedAt;
-                if (age <= keyPressLeyway.value) {
-                    return;
-                }
-            }
             requestedNotes.value.push(note);
             pause();
             break;
@@ -136,6 +140,15 @@ function noteOff(midi) {
         delete activeNotes.value[midi];
     }
 
+    const entry = activeNotes.value[midi];
+    if (!entry) return;
+
+    entry.count--;
+
+    if (entry.count <= 0) {
+        delete activeNotes.value[midi];
+    }
+
     const noteName = Tone.Frequency(midi, "midi").toNote();
 
     if (!voices[midi] || voices[midi].length === 0) return;
@@ -159,6 +172,7 @@ function createVoiceFromMaster(master) {
 }
 
 async function play() {
+    if (isPlaying.value) return;
     if (isPlaying.value) return;
     await Tone.start();
 
@@ -184,6 +198,8 @@ function stop() {
     // Reset active notes
     activeNotes.value = {};
     requestedNotes.value = [];
+    activeNotes.value = {};
+    requestedNotes.value = [];
 }
 
 function seekTo(seconds) {
@@ -205,6 +221,7 @@ async function loadMidiFile(file) {
 async function initMIDI() {
     const access = await navigator.requestMIDIAccess();
     console.log("MIDI Access obtained:", access);
+    console.log("MIDI Access obtained:", access);
     midiInputs.value = [];
     access.inputs.forEach(input => {
         midiInputs.value.push(input);
@@ -224,8 +241,10 @@ function handleMIDIMessage(event) {
         case 0x90: // Note On
             if (data2 > 0) {
                 // console.log(`Note On: ${note} (velocity: ${data2}) on channel ${channel + 1}`);
+                // console.log(`Note On: ${note} (velocity: ${data2}) on channel ${channel + 1}`);
                 keyDown(note);
             } else {
+                // console.log(`Note Off: ${note} on channel ${channel + 1}`);
                 // console.log(`Note Off: ${note} on channel ${channel + 1}`);
                 keyUp(note);
             }
