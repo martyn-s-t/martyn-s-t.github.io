@@ -16,9 +16,7 @@ const editDialog = ref(false);
 const deleteDialog = ref(false);
 const uploadDialog = ref(false);
 
-
 const songName = ref("");
-
 
 const publicFiles = [
     "./samples/midi/FMA - Brothers.mid",
@@ -66,6 +64,11 @@ function deleteSong() {
     localStorage.setItem("songs", JSON.stringify(songs.value));
     localStorage.removeItem(`song-${selectedSong.value.id}`);
     deleteDialog.value = false; selectedSong.value = null; songName.value = "";
+}
+
+function openSheetMusic(item) {
+    selectedSong.value = item;
+    emit("navigate", "sheet-music");
 }
 
 function openUpload() {
@@ -136,6 +139,7 @@ async function loadSongFromFile(file) {
                     <v-btn icon color="primary" variant="text" @click="playSong(item)"><v-icon>mdi-play</v-icon></v-btn>
                     <v-btn icon variant="text" @click="openEdit(item)"><v-icon>mdi-pencil</v-icon></v-btn>
                     <v-btn icon color="error" variant="text" @click="openDelete(item)"><v-icon>mdi-delete</v-icon></v-btn>
+                    <v-btn icon variant="text" @click="openSheetMusic(item)"><v-icon>mdi-music-note</v-icon></v-btn>
                 </template>
 
             </v-data-table>

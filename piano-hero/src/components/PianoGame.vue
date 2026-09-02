@@ -5,6 +5,7 @@ import MainMenu from "./piano-game/MainMenu.vue";
 import SongManager from "./piano-game/SongManager.vue";
 import SongModeSelect from "./piano-game/SongModeSelect.vue";
 import GameContainer from "./piano-game/GameContainer.vue";
+import SheetMusic from "./piano-game/SheetMusic.vue";
 import SettingsPage from "./piano-game/SettingsPage.vue";
 
 const views = {
@@ -12,6 +13,7 @@ const views = {
     "song-manager": SongManager,
     "song-mode-select": SongModeSelect,
     "game": GameContainer,
+    "sheet-music": SheetMusic,
     "settings": SettingsPage
 };
 
