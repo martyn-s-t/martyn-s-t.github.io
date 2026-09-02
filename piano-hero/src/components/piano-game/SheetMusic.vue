@@ -28,6 +28,7 @@ onMounted(async () => {
         drawComposer: false,
         drawPartNames: false,
         backend: "svg",
+        renderSingleHorizontalStaffline: false,
         pageFormat: "Endless",
         spacingBetweenSystems: 20,
         zoom: 0.9,
