@@ -152,7 +152,6 @@ function updateBpmHandler(newBpm) {
         }))
     };
 
-	console.log(updated);
     midiJson.value = updated;
 }
 
@@ -320,7 +319,6 @@ function removeOverlaps(midiJson) {
 			cumulative[current.midi].push(current);
 			return cumulative;
 		}, {});
-		console.log(notesByMidi);
 
 		Object.entries(notesByMidi).forEach(([midi, notes]) => {
 			notes = notes.sort((a, b) => a.ticks - b.ticks);

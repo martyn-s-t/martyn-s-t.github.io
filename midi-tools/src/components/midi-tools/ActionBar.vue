@@ -11,7 +11,6 @@ const emit = defineEmits([
 ]);
 
 const midiJson = defineModel("midiJson");
-console.log(midiJson.value);
 
 /* BPM */
 const newBpm = ref(Math.round(midiJson.value.header.tempos[0].bpm));

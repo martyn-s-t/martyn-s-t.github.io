@@ -42,9 +42,13 @@ function startPlay(hand) {
         <v-card class="mb-6 pa-4">
             <h3 class="mb-4">Listen</h3>
 
-            <v-btn block color="primary" @click="startListen">
-                Listen to Song
-            </v-btn>
+            <v-row>
+                <v-col cols="12">
+                    <v-btn block color="primary" @click="startListen">
+                        Listen to Song
+                    </v-btn>
+                </v-col>
+            </v-row>
         </v-card>
 
         <!-- LEARN -->
@@ -52,28 +56,22 @@ function startPlay(hand) {
             <h3 class="mb-4">Learn</h3>
 
             <v-row>
-                <v-col cols="6">
-                    <v-card class="pa-4 text-center">
-                        <v-btn block color="primary" @click="startLearn('left')">
-                            Learn Left Hand
-                        </v-btn>
-                    </v-card>
+                <v-col cols="6" v-if="selectedSong.tracks === 2">
+                    <v-btn block color="primary" @click="startLearn('left')">
+                        Learn Left Hand
+                    </v-btn>
                 </v-col>
 
-                <v-col cols="6">
-                    <v-card class="pa-4 text-center">
-                        <v-btn block color="primary" @click="startLearn('right')">
-                            Learn Right Hand
-                        </v-btn>
-                    </v-card>
+                <v-col cols="6" v-if="selectedSong.tracks === 2">
+                    <v-btn block color="primary" @click="startLearn('right')">
+                        Learn Right Hand
+                    </v-btn>
                 </v-col>
 
                 <v-col cols="12" class="mt-4">
-                    <v-card class="pa-4 text-center">
-                        <v-btn block color="primary" @click="startLearn('both')">
-                            Learn Both Hands
-                        </v-btn>
-                    </v-card>
+                    <v-btn block color="primary" @click="startLearn('both')">
+                        Learn Both Hands
+                    </v-btn>
                 </v-col>
             </v-row>
         </v-card>
@@ -83,27 +81,21 @@ function startPlay(hand) {
             <h3 class="mb-4">Play</h3>
             <v-row>
                 <v-col cols="6">
-                    <v-card class="pa-4 text-center">
-                        <v-btn block color="primary" @click="startPlay('left')">
-                            Play Left Hand
-                        </v-btn>
-                    </v-card>
+                    <v-btn block color="primary" @click="startPlay('left')">
+                        Play Left Hand
+                    </v-btn>
                 </v-col>
 
                 <v-col cols="6">
-                    <v-card class="pa-4 text-center">
-                        <v-btn block color="primary" @click="startPlay('right')">
-                            Play Right Hand
-                        </v-btn>
-                    </v-card>
+                    <v-btn block color="primary" @click="startPlay('right')">
+                        Play Right Hand
+                    </v-btn>
                 </v-col>
 
                 <v-col cols="12" class="mt-4">
-                    <v-card class="pa-4 text-center">
-                        <v-btn block color="primary" @click="startPlay('both')">
-                            Play Both Hands
-                        </v-btn>
-                    </v-card>
+                    <v-btn block color="primary" @click="startPlay('both')">
+                        Play Both Hands
+                    </v-btn>
                 </v-col>
             </v-row>
         </v-card>

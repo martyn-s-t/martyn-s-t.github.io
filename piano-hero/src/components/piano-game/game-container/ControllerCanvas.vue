@@ -1,8 +1,9 @@
 <script setup>
-const emit = defineEmits(["navigate", "play", "pause", "stop", "rec-on", "rec-off", "save-rec"]);
+const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec"]);
 
 const mode = defineModel("mode");
 const isRecording = defineModel("isRecording");
+const hasRecording = defineModel("hasRecording");
 
 function toggleRec() {
     if (isRecording.value) {
@@ -38,7 +39,7 @@ function navigate() {
                     <v-icon size="x-large">mdi-record</v-icon>
                 </v-btn>
 
-                <v-btn @click="$emit('play')">
+                <v-btn @click="$emit('start')">
                     <v-icon size="x-large">mdi-skip-previous</v-icon>
                 </v-btn>
 
@@ -54,7 +55,7 @@ function navigate() {
                     <v-icon size="x-large">mdi-stop</v-icon>
                 </v-btn>
 
-                <v-btn @click="$emit('save-rec')">
+                <v-btn v-if="mode === 'free'" @click="$emit('save-rec')" :disabled="!hasRecording">
                     <v-icon size="x-large">mdi-content-save</v-icon>
                 </v-btn>
             </v-btn-group>
