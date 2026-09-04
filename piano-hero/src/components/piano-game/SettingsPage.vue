@@ -3,17 +3,20 @@ import { ref, onMounted } from "vue";
 const emit = defineEmits(["navigate"]);
 
 
-const selectedMidiDevice = ref(localStorage.getItem("midiDevice"));
+const selectedMidiInputDevice = ref(localStorage.getItem("midiInputDevice"));
+const selectedMidiOutputDevice = ref(localStorage.getItem("midiOutputDevice"));
 const requireHoldAllKeys = ref(localStorage.getItem("requireHoldAllKeys"));
 const pressKeyLeeway = ref(localStorage.getItem("pressKeyLeeway"));
 
-const midiDevices = ref([]);
+const midiInputDevices = ref([]);
+const midiOutputDevices = ref([{id: null, name: "No Output"}, {id: "system-output", name: "System Output"}]);
 
 async function initMIDI() {
     const access = await navigator.requestMIDIAccess();
 
-    midiDevices.value = [];
-    access.inputs.forEach(input => midiDevices.value.push(input));
+    midiInputDevices.value = []; midiOutputDevices.value = [{id: null, name: "No Output"}, {id: "system-output", name: "System Output"}];
+    access.inputs.forEach(input => midiInputDevices.value.push(input));
+    access.outputs.forEach(output => midiOutputDevices.value.push(output));
 }
 
 onMounted(async () => {
@@ -22,7 +25,8 @@ onMounted(async () => {
 
 
 function saveSettings() {
-    localStorage.setItem("midiDevice", selectedMidiDevice.value);
+    localStorage.setItem("midiInputDevice", selectedMidiInputDevice.value);
+    localStorage.setItem("midiOutputDevice", selectedMidiOutputDevice.value);
     localStorage.setItem("requireHoldAllKeys", requireHoldAllKeys.value);
     localStorage.setItem("pressKeyLeeway", pressKeyLeeway.value);
 
@@ -54,13 +58,19 @@ function saveSettings() {
 
                 <v-row class="mb-4 align-center">
                     <v-col cols="2">
-                        <v-btn block @click="initMIDI">
-                            <v-icon size="x-large">mdi-piano</v-icon>
-                        </v-btn>
+                        <v-btn block @click="initMIDI"><v-icon size="x-large">mdi-piano</v-icon></v-btn>
                     </v-col>
-
                     <v-col cols="10">
-                        <v-select label="Input Device" :items="midiDevices" item-title="name" item-value="id" v-model="selectedMidiDevice" hide-details density="compact" />
+                        <v-select label="Input Device" :items="midiInputDevices" item-title="name" item-value="id" v-model="selectedMidiInputDevice" hide-details density="compact" />
+                    </v-col>
+                </v-row>
+
+                <v-row class="mb-4 align-center">
+                    <v-col cols="2">
+                        <v-btn block @click="initMIDI"><v-icon size="x-large">mdi-piano</v-icon></v-btn>
+                    </v-col>
+                    <v-col cols="10">
+                        <v-select label="Output Device" :items="midiOutputDevices" item-title="name" item-value="id" v-model="selectedMidiOutputDevice" hide-details density="compact" />
                     </v-col>
                 </v-row>
             </v-card-text>

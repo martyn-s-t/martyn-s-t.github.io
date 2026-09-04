@@ -56,8 +56,6 @@ function animationLoop() {
     const totalSeconds = props.duration + props.timeToFall;
     const elapsedSeconds = props.isPlaying ? Math.min(now - props.startTime, totalSeconds) : props.pausedAt;
 
-    // console.log(`now: ${now}, duration: ${props.duration}, time to fall: ${props.timeToFall}, startTime: ${props.startTime}, elapsedSeconds: ${elapsedSeconds}, totalSeconds: ${totalSeconds}`);
-
     const canvas = canvasElement.value;
     const w = canvas.width;
     const h = canvas.height;
