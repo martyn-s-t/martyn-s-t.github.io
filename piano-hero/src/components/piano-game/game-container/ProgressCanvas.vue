@@ -3,12 +3,12 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 
 const emit = defineEmits(["seek-to"]);
 
-const duration = defineModel("duration");
-const startTime = defineModel("startTime");
-const pausedAt = defineModel("pausedAt");
-const isPlaying = defineModel("isPlaying");
-const timeToFall = defineModel("timeToFall");
-const getNow = defineModel("getNow");
+const props = defineProps({
+    elapsedSeconds: Number,
+    totalSeconds: Number,
+    progressPercentage: Number,
+});
+
 const isSeeking = defineModel("isSeeking");
 
 const x = ref(0);
@@ -24,23 +24,15 @@ function resizeCanvasToCssSize(canvas) {
 }
 
 function animationLoop() {
-    const now = getNow.value();
-    
-    const totalSeconds = duration.value + timeToFall.value;
-
-    const elapsedSeconds = isPlaying.value ? Math.min(now - startTime.value, totalSeconds) : pausedAt.value;
-
-    const progress = elapsedSeconds / totalSeconds;
-
     const canvas = canvasElement.value;
     const w = canvas.width;
     const h = canvas.height;
 
     canvasContext.clearRect(0, 0, w, h);
 
-    drawProgress(w, h, progress);
+    drawProgress(w, h, props.progressPercentage);
     drawScrub(w, h);
-    drawDuration(w, h, elapsedSeconds, totalSeconds);
+    drawDuration(w, h, props.elapsedSeconds, props.totalSeconds);
 
     animationFrameId = requestAnimationFrame(animationLoop);
 }
@@ -90,7 +82,7 @@ function seekFromEvent() {
     const width = rect.width;
 
     const percentage = Math.min(Math.max(x.value / width, 0), 1);
-    const newTime = percentage * (duration.value + timeToFall.value);
+    const newTime = percentage * (props.totalSeconds);
 
     emit("seek-to", newTime);
 }

@@ -2,15 +2,11 @@
 import { ref, onMounted, onBeforeUnmount, watch } from "vue";
 
 const props = defineProps({
-    notes: Array,          // engine-prepared falling notes
-    currentTime: Number,   // engine timing
-    timeToFall: Number,    // engine timing
-    isSeeking: Boolean,     // engine state
-    isPlaying: Boolean,    // engine state
-    duration: Number,      // engine state
-    getNow: Function,       // engine state
-    startTime: Number,      // engine state
-    pausedAt: Number,       // engine state
+    notes: Array,
+    timeToFall: Number,
+    duration: Number,
+    startTime: Number,
+    elapsedSeconds: Number,
 });
 
 const canvasElement = ref(null);
@@ -52,10 +48,6 @@ function prepareVisualNotes() {
 }
 
 function animationLoop() {
-    const now = props.getNow();
-    const totalSeconds = props.duration + props.timeToFall;
-    const elapsedSeconds = props.isPlaying ? Math.min(now - props.startTime, totalSeconds) : props.pausedAt;
-
     const canvas = canvasElement.value;
     const w = canvas.width;
     const h = canvas.height;
@@ -67,7 +59,7 @@ function animationLoop() {
     const blackKeyWidth = whiteKeyWidth * 0.6;
 
     fallingNotes.forEach(note => {
-        renderNote(note, whiteKeyWidth, blackKeyWidth, h, elapsedSeconds);
+        renderNote(note, whiteKeyWidth, blackKeyWidth, h, props.elapsedSeconds);
     });
 
     animationFrameId = requestAnimationFrame(animationLoop);

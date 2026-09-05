@@ -1,9 +1,16 @@
 <script setup>
-const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec"]);
+import { ref, watch } from 'vue';
 
-const mode = defineModel("mode");
-const isRecording = defineModel("isRecording");
-const hasRecording = defineModel("hasRecording");
+const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "change-playback-speed"]);
+
+const props = defineProps({
+    mode: String,
+    playbackSpeed: Number,
+    isRecording: Boolean,
+    hasRecording: Boolean
+});
+
+const playbackSpeedLocal = ref(props.playbackSpeed * 100);
 
 function toggleRec() {
     if (isRecording.value) {
@@ -14,12 +21,18 @@ function toggleRec() {
 }
 
 function navigate() {
-    if (mode.value === "free") {
+    if (props.mode === "free") {
         emit("navigate", "main-menu");
     } else {
         emit("navigate");
     }
 }
+
+function onPlaybackSpeedChanged(value) {
+    emit("change-playback-speed", value / 100);
+    // playbackSpeedLocal.value = value;
+}
+
 </script>
 
 <template>
@@ -61,8 +74,14 @@ function navigate() {
             </v-btn-group>
         </v-col>
 
+        <v-col cols="1" class="d-flex justify-center h-100">
+            <v-number-input v-model="playbackSpeedLocal" @update:model-value="onPlaybackSpeedChanged"
+            :min="10" :max="200" :step="10" control-variant="split"></v-number-input>
+
+        </v-col>
+
         <!-- Spacer -->
-        <v-col cols="4">
+        <v-col cols="3">
 
         </v-col>
     </v-row>
