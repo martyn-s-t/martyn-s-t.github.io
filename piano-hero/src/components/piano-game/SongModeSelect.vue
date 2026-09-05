@@ -80,13 +80,13 @@ function startPlay(hand) {
         <v-card class="mb-6 pa-4">
             <h3 class="mb-4">Play</h3>
             <v-row>
-                <v-col cols="6">
+                <v-col cols="6" v-if="selectedSong.tracks === 2">
                     <v-btn block color="primary" @click="startPlay('left')">
                         Play Left Hand
                     </v-btn>
                 </v-col>
 
-                <v-col cols="6">
+                <v-col cols="6" v-if="selectedSong.tracks === 2">
                     <v-btn block color="primary" @click="startPlay('right')">
                         Play Right Hand
                     </v-btn>
