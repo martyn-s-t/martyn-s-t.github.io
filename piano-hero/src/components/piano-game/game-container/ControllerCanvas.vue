@@ -1,22 +1,31 @@
 <script setup>
 import { ref, watch } from 'vue';
 
-const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "change-playback-speed"]);
+const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "music-roll-on", "music-roll-off", "change-playback-speed"]);
 
 const props = defineProps({
     mode: String,
     playbackSpeed: Number,
     isRecording: Boolean,
-    hasRecording: Boolean
+    hasRecording: Boolean,
+    displayMusicRoll: Boolean,
 });
 
 const playbackSpeedLocal = ref(props.playbackSpeed * 100);
 
 function toggleRec() {
-    if (isRecording.value) {
+    if (props.isRecording) {
         emit("rec-off");
     } else {
         emit("rec-on");
+    }
+}
+
+function toggleMusicRoll() {
+    if (props.displayMusicRoll) {
+        emit("music-roll-off");
+    } else {
+        emit("music-roll-on");
     }
 }
 
@@ -30,7 +39,6 @@ function navigate() {
 
 function onPlaybackSpeedChanged(value) {
     emit("change-playback-speed", value / 100);
-    // playbackSpeedLocal.value = value;
 }
 
 </script>
@@ -75,15 +83,18 @@ function onPlaybackSpeedChanged(value) {
         </v-col>
 
         <v-col cols="1" class="d-flex justify-center h-100">
-            <v-number-input v-model="playbackSpeedLocal" @update:model-value="onPlaybackSpeedChanged"
-            :min="10" :max="200" :step="10" control-variant="split"></v-number-input>
-
+            <v-number-input v-model="playbackSpeedLocal" @update:model-value="onPlaybackSpeedChanged" :min="10" :max="200" :step="10" control-variant="split" hide-detail="auto" density="compact"></v-number-input>
         </v-col>
 
         <!-- Spacer -->
-        <v-col cols="3">
+        <v-col cols="2"></v-col>
 
+        <v-col cols="1" class="d-flex justify-center h-100">
+            <v-btn v-if="mode !== 'free'" @click="toggleMusicRoll" hide-detail="auto" density="compact" block>
+                <v-icon size-="x-large">mdi-music-note</v-icon>
+            </v-btn>
         </v-col>
+
     </v-row>
 </template>
 

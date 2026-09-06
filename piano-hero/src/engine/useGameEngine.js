@@ -22,6 +22,8 @@ export default function useGameEngine() {
 
     const hasRecording = ref(false);
 
+    const displayMusicRoll = ref(false);
+
     const startTime = ref(0);
     const recordStartTime = ref(0);
     const pausedAt = ref(0);
@@ -95,7 +97,6 @@ export default function useGameEngine() {
     }
 
     function handleMIDIMessage(event) {
-        console.log(event);
         const [status, note, data2] = event.data;
 
         const command = status & 0xF0; // message type
@@ -369,6 +370,13 @@ export default function useGameEngine() {
         URL.revokeObjectURL(url);
     }
 
+    function musicRollOn() {
+        displayMusicRoll.value = true;
+    }
+    function musicRollOff() {
+        displayMusicRoll.value = false;
+    }
+
     let mode = "listen";
     let hand = "both";
 
@@ -536,6 +544,11 @@ export default function useGameEngine() {
         recOn,
         recOff,
         saveRec,
+
+        // music roll
+        musicRollOn,
+        musicRollOff,
+        displayMusicRoll,
 
         // modes
         startFreePlay,
