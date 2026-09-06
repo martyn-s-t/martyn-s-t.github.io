@@ -3,52 +3,55 @@ import { onMounted, onBeforeUnmount, ref } from "vue";
 
 // Shared engine
 import useGameEngine from "../../engine/useGameEngine.js";
+import midiToMusicXml from "../../engine/midiToMusicXml.js";
 
 // Canvases
 import ControllerCanvas from "./game-container/ControllerCanvas.vue";
 import KeyboardCanvas from "./game-container/KeyboardCanvas.vue";
 import ProgressCanvas from "./game-container/ProgressCanvas.vue";
 import TrackCanvas from "./game-container/TrackCanvas.vue";
+import SheetMusicStrip from "./game-container/SheetMusicStrip.vue";
 
 const emit = defineEmits(["navigate"]);
-
-const midiInputDevices = ref([]);
-const midiOutputDevices = ref([]);
 
 const song = defineModel("selectedSong");
 const mode = defineModel("selectedMode");
 const hand = defineModel("selectedHand");
 
+const musicXml = ref(null);
+
 const {
-    notes,
     fallingNotes,
 
 
-    currentTime,
     duration,
     timeToFall,
     getNow,
 
-    isPlaying,
     isSeeking,
     isRecording,
-
     hasRecording,
+    playbackSpeed,
 
-    startTime,
-    pausedAt,
+    elapsedSeconds,
+    totalSeconds,
+    progressPercentage,
 
     play,
     pause,
     stop,
     start,
     seekTo,
+    setPlaybackSpeed,
 
     recOn,
     recOff,
     saveRec,
 
-    handleMIDIMessage,
+    musicRollOn,
+    musicRollOff,
+    displayMusicRoll,
+
     onKeyDown,
     onKeyUp,
 
@@ -63,6 +66,7 @@ const {
 
 
     loadMidi,
+    initMidiDevices,
     initAudio,
 } = useGameEngine();
 
@@ -72,34 +76,20 @@ function navigate(view = "song-mode-select") {
     emit("navigate", view);
 }
 
-async function initMIDI() {
-    const access = await navigator.requestMIDIAccess();
 
-    midiInputDevices.value = []; midiOutputDevices.value = [];
-    access.inputs.forEach(input => midiInputDevices.value.push(input));
-    access.outputs.forEach(output => midiOutputDevices.value.push(output));
-}
 
-onMounted(async () => {
-    let midiDeviceInputId = localStorage.getItem("midiDeviceInput");
-    let midiDeviceOutputId = localStorage.getItem("midiDeviceInput");
-    
-    await initMIDI()
-    
-    let selectedMidiInputDevice = midiInputDevices.value.find(device => device.id === midiDeviceInputId);
-    let selectedMidiOutputDevice = midiInputDevices.value.find(device => device.id === midiDeviceOutputId);
-    if (selectedMidiInputDevice)
-        selectedMidiInputDevice.onmidimessage = handleMIDIMessage;
-    
-    await initAudio(midiDeviceOutputId, selectedMidiOutputDevice);
+onMounted(async () => {    
+    await initMidiDevices();    
+    await initAudio();
 
-    
     if (mode.value === "free") {
         startFreePlay(); 
         return
     }
 
     let midi = JSON.parse(localStorage.getItem(`song-${song.value.id}`));
+    musicXml.value = midiToMusicXml(midi);
+
     loadMidi(midi);
 
     if (mode.value === "listen") startListen();
@@ -114,10 +104,15 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="game-canvas-layer">
-        <ControllerCanvas v-model:mode="mode" v-model:isRecording="isRecording" v-model:hasRecording="hasRecording" @pause="pause" @play="play" @stop="stop" @start="start" @rec-on="recOn" @rec-off="recOff" @save-rec="saveRec" @navigate="navigate" />
+        <ControllerCanvas v-model:mode="mode" v-model:isRecording="isRecording" v-model:hasRecording="hasRecording" :playbackSpeed="playbackSpeed"
+                @pause="pause" @play="play" @stop="stop" @start="start" 
+                @change-playback-speed="setPlaybackSpeed"
+                @music-roll-on="musicRollOn" @music-roll-off="musicRollOff" :displayMusicRoll="displayMusicRoll"
+                @rec-on="recOn" @rec-off="recOff" @save-rec="saveRec" @navigate="navigate" />
+        <ProgressCanvas v-if="mode !== 'free'" v-model:isSeeking="isSeeking" :elapsedSeconds="elapsedSeconds" :totalSeconds="totalSeconds" :progressPercentage="progressPercentage" @seek-to="seekTo" />
+        <SheetMusicStrip v-if="displayMusicRoll" :musicXml="musicXml" :elapsedSeconds="elapsedSeconds" :duration="duration" :timeToFall="timeToFall"/>
+        <TrackCanvas :notes="fallingNotes" :timeToFall="timeToFall" :duration="duration" :elapsedSeconds="elapsedSeconds" />
         <KeyboardCanvas v-model:activeNotes="activeNotes" v-model:requestedNotes="requestedNotes" @key-down="onKeyDown" @key-up="onKeyUp" />
-        <ProgressCanvas v-if="mode !== 'free'" :duration="duration" v-model:startTime="startTime" v-model:pausedAt="pausedAt" v-model:isPlaying="isPlaying" v-model:isSeeking="isSeeking" v-model:timeToFall="timeToFall" v-model:getNow="getNow" @seek-to="seekTo" />
-        <TrackCanvas :notes="fallingNotes" :startTime="startTime" :timeToFall="timeToFall" :isSeeking="isSeeking" :isPlaying="isPlaying" :duration="duration" :pausedAt="pausedAt" :getNow="getNow" />
     </div>
 </template>
 

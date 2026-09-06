@@ -11,8 +11,10 @@ export default function useGameEngine() {
     const requestedNotes = ref([]);
     const recordedNotes = ref([]);
 
-    const currentTime = ref(0);
     const duration = ref(0);
+    const totalSeconds = ref(0);
+    const elapsedSeconds = ref(0);
+    const progressPercentage = ref(0);
 
     const isPlaying = ref(false);
     const isSeeking = ref(false);
@@ -20,16 +22,25 @@ export default function useGameEngine() {
 
     const hasRecording = ref(false);
 
+    const displayMusicRoll = ref(false);
+
     const startTime = ref(0);
     const recordStartTime = ref(0);
     const pausedAt = ref(0);
 
     const requireHoldAllKeys = ref(localStorage.getItem("requireHoldAllKeys") === "true");
     const keyPressLeeway = ref(Number(localStorage.getItem("keyPressLeeway") || 0));
+
+    const midiInputDeviceId = ref(localStorage.getItem("midiInputDevice"));
     const midiOutputDeviceId = ref(localStorage.getItem("midiOutputDevice"));
+    const midiInputDevice = ref(null);
     const midiOutputDevice = ref(null);
 
+    const midiInputDevices = ref([]);
+    const midiOutputDevices = ref([]);
+
     const timeToFall = ref(3);
+    const playbackSpeed = ref(1.0);
     const ppq = ref(384);
 
     const SAMPLE_URLS = {
@@ -41,6 +52,20 @@ export default function useGameEngine() {
 
     const voices = {};
     let sampler = null;
+
+    async function initMidiDevices() {
+        const access = await navigator.requestMIDIAccess();
+
+        midiInputDevices.value = []; midiOutputDevices.value = [];
+        access.inputs.forEach(input => midiInputDevices.value.push(input));
+        access.outputs.forEach(output => midiOutputDevices.value.push(output));
+
+        midiInputDevice.value = midiInputDevices.value.find(midiInputDevice => midiInputDevice.id === midiInputDeviceId.value);
+        midiOutputDevice.value = midiOutputDevices.value.find(midiOutputDevice => midiOutputDevice.id === midiOutputDeviceId.value);
+
+        if (midiInputDevice.value)
+            midiInputDevice.value.onmidimessage = handleMIDIMessage;
+    }
 
     async function initAudio() {
         switch (midiOutputDeviceId.value) {
@@ -54,10 +79,9 @@ export default function useGameEngine() {
                     release: 1,
                     baseUrl: "/piano-hero/dist/samples/piano/"
                 }).toDestination();
-        
+
                 return await Tone.loaded();
             default:
-                midiOutputDevice.value = midiInputDevices.value.find(device => device.id === midiDeviceOutputId);
         }
     }
 
@@ -120,7 +144,6 @@ export default function useGameEngine() {
     }
 
     function playNote(midi, velocity) {
-        console.log(midiOutputDeviceId.value, midi)
         switch (midiOutputDeviceId.value) {
             case null:
             case undefined:
@@ -137,7 +160,11 @@ export default function useGameEngine() {
                 return;
             default:
                 if (midiOutputDevice.value) {
+                    const vel = Math.floor((velocity ?? 0.8) * 127);
 
+                    // Note On: 0x90 + channel (0)
+                    midiOutputDevice.value.send([0x90, midi, vel]);
+                    return;
                 }
         }
     }
@@ -154,7 +181,8 @@ export default function useGameEngine() {
                 voice.triggerRelease(noteName);
             default:
                 if (midiOutputDevice.value) {
-
+                    midiOutputDevice.value.send([0x80, midi, 0]);
+                    return;
                 }
         }
     }
@@ -209,9 +237,11 @@ export default function useGameEngine() {
         const midi = note.midi;
         const now = getNow();
         const entry = activeNotes.value[midi];
+        const noteDuration = note.duration * 1000 / playbackSpeed.value
+
         if (mode === "listen") {
             noteOn(note.midi);
-            setTimeout(() => noteOff(note.midi), note.duration * 1000);
+            setTimeout(() => noteOff(note.midi), noteDuration);
             return;
         }
 
@@ -237,7 +267,7 @@ export default function useGameEngine() {
                 pause();
             } else {
                 noteOn(note.midi);
-                setTimeout(() => noteOff(note.midi), note.duration * 1000);
+                setTimeout(() => noteOff(note.midi), noteDuration);
             }
             return;
         }
@@ -288,12 +318,13 @@ export default function useGameEngine() {
     }
 
     function seekTo(seconds) {
-        const total = duration.value + timeToFall.value;
-        const clamped = Math.max(0, Math.min(seconds, total));
+        const clamped = Math.max(0, Math.min(seconds, totalSeconds.value));
 
+        elapsedSeconds.value = clamped;
         pausedAt.value = clamped;
+
         if (isPlaying.value) {
-            startTime.value = getNow() - clamped;
+            startTime.value = getNow() - (clamped / playbackSpeed.value);
         } else {
             startTime.value = 0;
         }
@@ -306,7 +337,9 @@ export default function useGameEngine() {
             n.yPosition = -n.height;
         });
     }
-
+    function setPlaybackSpeed(value) {
+        playbackSpeed.value = Math.max(0.1, Math.min(2.0, value));
+    }
 
     function recOn() {
         recordedNotes.value = [];
@@ -337,6 +370,13 @@ export default function useGameEngine() {
         URL.revokeObjectURL(url);
     }
 
+    function musicRollOn() {
+        displayMusicRoll.value = true;
+    }
+    function musicRollOff() {
+        displayMusicRoll.value = false;
+    }
+
     let mode = "listen";
     let hand = "both";
 
@@ -344,7 +384,6 @@ export default function useGameEngine() {
         mode = "free";
         stop();
 
-        currentTime.value = 0;
         fallingNotes.value = [];
     }
     function startListen() {
@@ -376,6 +415,7 @@ export default function useGameEngine() {
             midi.tracks.reduce((max, track) => {
                 return Math.max(max, track.endOfTrackTicks)
             }, 0), midi);
+        totalSeconds.value = duration.value + timeToFall.value;
 
         prepareFallingNotes();
     }
@@ -401,10 +441,10 @@ export default function useGameEngine() {
     }
 
     function updateNoteTriggers() {
-        const t = currentTime.value;
+        const time = elapsedSeconds.value;
 
         for (const note of fallingNotes.value) {
-            if (!note.hasPlayed && t >= note.triggerTime) {
+            if (!note.hasPlayed && time >= note.triggerTime) {
                 requestedNoteOn(note);
                 note.hasPlayed = true;
             }
@@ -412,8 +452,10 @@ export default function useGameEngine() {
     }
 
     function tick() {
+        const now = getNow();
         if (isPlaying.value && !isSeeking.value) {
-            currentTime.value = getNow() - startTime.value;
+            elapsedSeconds.value = isPlaying.value ? Math.min((now - startTime.value) * playbackSpeed.value, totalSeconds.value) : pausedAt.value;
+            progressPercentage.value = elapsedSeconds.value / totalSeconds.value;
             updateNoteTriggers();
         }
         requestAnimationFrame(tick);
@@ -468,12 +510,18 @@ export default function useGameEngine() {
         fallingNotes,
         activeNotes,
         requestedNotes,
-        currentTime,
+
         duration,
+
+        totalSeconds,
+        elapsedSeconds,
+        progressPercentage,
+
         isPlaying,
         isSeeking,
         isRecording,
         hasRecording,
+        playbackSpeed,
 
         startTime,
         pausedAt,
@@ -490,11 +538,17 @@ export default function useGameEngine() {
         stop,
         start,
         seekTo,
+        setPlaybackSpeed,
 
         // recording
         recOn,
         recOff,
         saveRec,
+
+        // music roll
+        musicRollOn,
+        musicRollOff,
+        displayMusicRoll,
 
         // modes
         startFreePlay,
@@ -504,6 +558,7 @@ export default function useGameEngine() {
 
         // midi
         loadMidi,
+        initMidiDevices,
         initAudio,
 
         // timing
