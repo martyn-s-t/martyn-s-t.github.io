@@ -5,11 +5,15 @@ const emit = defineEmits(["navigate"]);
 
 const selectedMidiInputDevice = ref(localStorage.getItem("midiInputDevice"));
 const selectedMidiOutputDevice = ref(localStorage.getItem("midiOutputDevice"));
-const requireHoldAllKeys = ref(localStorage.getItem("requireHoldAllKeys"));
-const pressKeyLeeway = ref(localStorage.getItem("pressKeyLeeway"));
+
+const requireHoldAllKeys = ref(localStorage.getItem("requireHoldAllKeys") === "true");
+const pressKeyLeeway = ref(Number(localStorage.getItem("pressKeyLeeway") || 50));
+const quantiseNotes = ref(localStorage.getItem("quantiseNotes") === "true");
+const quantiseSubdivisions = ref(Number(localStorage.getItem("quantiseSubdivisions") || 4));
 
 const midiInputDevices = ref([]);
 const midiOutputDevices = ref([{id: null, name: "No Output"}, {id: "system-output", name: "System Output"}]);
+const subDivisions = ref([1, 2, 4, 8, 16, 32]);
 
 async function initMIDI() {
     const access = await navigator.requestMIDIAccess();
@@ -29,6 +33,8 @@ function saveSettings() {
     localStorage.setItem("midiOutputDevice", selectedMidiOutputDevice.value);
     localStorage.setItem("requireHoldAllKeys", requireHoldAllKeys.value);
     localStorage.setItem("pressKeyLeeway", pressKeyLeeway.value);
+    localStorage.setItem("quantiseNotes", quantiseNotes.value);
+    localStorage.setItem("quantiseSubdivisions", quantiseSubdivisions.value);
 
     emit("navigate", "main-menu");
 }
@@ -50,6 +56,16 @@ function saveSettings() {
                 <v-row class="mb-4 align-center">
                     <v-col cols="12">
                         <v-text-field label="Press Key Leeway (ms)" v-model="pressKeyLeeway" type="number" hide-details density="compact" />
+                    </v-col>
+                </v-row>
+                <v-row class="mb-4 align-center">
+                    <v-col cols="12">
+                        <v-switch label="Enable Duration Quantising" v-model="quantiseNotes" hide-details density="compact" />
+                    </v-col>
+                </v-row>
+                <v-row class="mb-4 align-center">
+                    <v-col cols="12">
+                        <v-select label="Quantising Subdivisions" :items="subDivisions"  v-model="quantiseSubdivisions" hide-details density="compact" />
                     </v-col>
                 </v-row>
             </v-card-text>

@@ -88,9 +88,13 @@ onMounted(async () => {
     }
 
     let midi = JSON.parse(localStorage.getItem(`song-${song.value.id}`));
+    loadMidi(midi);
+    
     musicXml.value = midiToMusicXml(midi);
 
-    loadMidi(midi);
+    window.midi = midi;
+
+
 
     if (mode.value === "listen") startListen();
     if (mode.value === "learn") startLearn(hand.value);
