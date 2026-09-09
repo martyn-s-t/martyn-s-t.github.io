@@ -41,7 +41,9 @@ export default function useGameEngine() {
 
     const timeToFall = ref(3);
     const playbackSpeed = ref(1.0);
-    const ppq = ref(384);
+    const ppq = ref(480);
+    const enableQuantiseNotes = ref(localStorage.getItem("quantiseNotes") === "true");
+    const quantiseSubdivisions = ref(Number(localStorage.getItem("quantiseSubdivisions") || 0))
 
     const SAMPLE_URLS = {
         A1: "A1.mp3",
@@ -405,6 +407,13 @@ export default function useGameEngine() {
 
 
     function loadMidi(midi) {
+        if (midi.header.tempos.length === 0) {
+            addBpmFromFirstNote(midi);
+        }
+        trimTracks(midi.tracks, midi.header.ppq);
+        enableQuantiseNotes.value && quantiseTracks(midi.tracks, midi.header.ppq, quantiseSubdivisions.value);
+        // recomputeEndOfTrackTicks(midi.tracks);
+
         const left = midi.tracks[1]?.notes || [];
         const right = midi.tracks[0]?.notes || [];
 
@@ -419,6 +428,67 @@ export default function useGameEngine() {
 
         prepareFallingNotes();
     }
+    function quantiseTracks(tracks, ppq, subdivision) {
+        for (const track of tracks) {
+            quantiseNotes(track.notes, ppq, subdivision);
+        }
+    }
+
+    function quantiseNotes(notes, ppq, subdivision) {
+        const step = ppq / subdivision;
+
+        for (const note of notes) {
+
+            let quantisedDurationTicks = Math.round(note.durationTicks / step) * step;
+            if (quantisedDurationTicks === 0) quantisedDurationTicks = step;
+
+            note.durationTicks = quantisedDurationTicks;
+            note.duration = note.durationTicks / ppq;
+        }
+    }
+    function recomputeEndOfTrackTicks(tracks) {
+        for (const track of tracks) {
+            let maxTick = 0;
+            let maxTime = 0;
+
+            for (const note of track.notes) {
+                const endTick = note.ticks + note.durationTicks;
+                const endTime = note.time + note.duration;
+                if (endTick > maxTick) maxTick = endTick;
+                if (endTime > maxTime) maxTime = endTime;
+            }
+
+            track.endOfTrackTicks = maxTick;
+        }
+    }
+
+    function trimTracks(tracks, ppq) {
+        let firstTick = Infinity, firstTime = Infinity;
+
+        for (const track of tracks) {
+            for (const note of track.notes) {
+                if (note.ticks < firstTick) {
+                    firstTick = note.ticks;
+                    firstTime = note.time;
+                }
+            }
+        }
+
+        if (firstTick === 0 || firstTick === Infinity) return;
+        if (firstTime === 0 || firstTime === Infinity) return;
+
+
+        for (const track of tracks) {
+            for (const note of track.notes) {
+                note.ticks -= firstTick;
+                note.time -= firstTime;
+            }
+        }
+    }
+
+
+
+
 
     function prepareFallingNotes() {
         fallingNotes.value = notes.value.map(note => {
@@ -465,10 +535,6 @@ export default function useGameEngine() {
         const ppq = midi.header.ppq;
         const tempos = midi.header.tempos;
 
-        if (tempos.length === 0) {
-            addBpmFromFirstNote(midi);
-        }
-
         let last = tempos[0];
         let seconds = 0;
 
@@ -500,7 +566,7 @@ export default function useGameEngine() {
     function bpmFromNote(note, ppq) {
         const secondsPerTick = note.duration / note.durationTicks;
         const secondsPerQuarter = secondsPerTick * ppq;
-        return 60 / secondsPerQuarter;
+        return Math.round(60 / secondsPerQuarter);
     }
 
     tick();

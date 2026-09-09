@@ -1,33 +1,5 @@
-function quantiseTrack(track, divisions, subdivision = 4) {
-    const step = divisions / subdivision;
-    const notes = track.notes;
 
 
-    notes.sort((a, b) => a.ticks - b.ticks);
-
-    for (let i = 0; i < notes.length; i++) {
-        const note = notes[i];
-
-        const originalTick = note.ticks;
-        const quantisedTick = Math.round(originalTick / step) * step;
-        const startDelta = quantisedTick - originalTick;
-
-        const originalDuration = note.durationTicks;
-        const quantisedDuration = Math.round(originalDuration / step) * step;
-        const durationDelta = quantisedDuration - originalDuration;
-
-        note.ticks = quantisedTick;
-        note.durationTicks = quantisedDuration;
-
-        if (startDelta !== 0 || durationDelta !== 0) {
-            for (let j = i + 1; j < notes.length; j++) {
-                notes[j].ticks += startDelta + durationDelta;
-            }
-        }
-    }
-
-    return track;
-}
 function addNoteWithSplitting(note) {
     let remaining = note.duration;
 
@@ -170,10 +142,10 @@ function buildMeasure(groupedMeasure, divisions, bpm, measureIndex, beatsPerMeas
 
     let xml = "";
 
-    
-    if (measureIndex === 0)
+    if (measureIndex === 0) {
         xml += createAttributes(divisions);
         xml += createMetronome(bpm);
+    }
 
 
     xml += processTrack(trebleTrack, trebleTicks, 1, measureDuration, measureIndex);
@@ -189,7 +161,7 @@ function buildMeasure(groupedMeasure, divisions, bpm, measureIndex, beatsPerMeas
 export default function midiToMusicXml(midiJson, bpm = 120, beatsPerMeasure = 4) {
     const ppq = midiJson.header.ppq;
     const divisions = ppq;
-    bpm = midiJson.header.tempos[0]
+    bpm = midiJson.header.tempos[0].bpm
 
     const title = midiJson.header.name || "";
     const numberOfTracks = midiJson.tracks.length;
@@ -198,7 +170,6 @@ export default function midiToMusicXml(midiJson, bpm = 120, beatsPerMeasure = 4)
         note.track = numberOfTracks === 2 ? index : note.midi > 60 ? 0 : 1;
 
     }))
-    midiJson.tracks.map(track => quantiseTrack(track, divisions, 4));
 
     const notes = midiJson.tracks.flatMap(t => t.notes).sort((a, b) => a.ticks - b.ticks);
 
@@ -220,8 +191,6 @@ export default function midiToMusicXml(midiJson, bpm = 120, beatsPerMeasure = 4)
         }
         groupedMeasures.push(group);
     }
-
-    console.log(groupedMeasures);
 
     const xml = `
         <?xml version="1.0" encoding="UTF-8"?>
