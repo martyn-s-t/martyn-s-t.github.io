@@ -204,13 +204,23 @@ function splitNoteAcrossMeasures(note, measureLengthTicks) {
 }
 
 
-export default function midiToMusicXml(midiJson, bpm = 120) {
+export default function midiToMusicXml(midiJson) {
     const timeSignature = midiJson.header.timeSignatures?.[0]?.timeSignature ?? [4, 4];
     const [beatsPerMeasure, beatUnit] = timeSignature;
 
     const ppq = midiJson.header.ppq;
     const divisions = ppq;
-    bpm = bpm || midiJson.header.tempos[0].bpm;
+    let bpm = midiJson.header?.tempos?.[0]?.bpm;
+
+    if (!bpm) {
+        const note = midiJson.tracks[0].notes[0];
+        console.log(note);
+        const secondsPerTick = note.duration / note.durationTicks;
+        const secondsPerQuarter = secondsPerTick * ppq;
+        bpm = Math.round(60 / secondsPerQuarter);
+    }
+
+    console.log(`BPM is ${bpm}`);
 
     const title = midiJson.header.name || "";
     const numberOfTracks = midiJson.tracks.length;

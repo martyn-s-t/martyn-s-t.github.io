@@ -17,8 +17,9 @@ const stripWrapper = ref(null);
 const svg = ref(null);
 const viewBox = ref(null);
 
-const startOffset = 90;
-const endOffset = 140;
+let startOffset = 130;
+let additionalStartShift = 0;
+let endOffset = 50;
 
 let osmd = null;
 
@@ -50,6 +51,11 @@ async function renderOsmd() {
     osmd.render();
 
     svg.value = osmdContainer.value.querySelector("svg");
+    const originalWidth  = svg.value.getAttribute("width");
+    if (originalWidth < window.innerWidth) {
+        svg.value.setAttribute("width", window.innerWidth)
+        additionalStartShift = (window.innerWidth - originalWidth) / 2;
+    }
     viewBox.value = svg.value.viewBox.baseVal;
 
     updateScroll(props.elapsedSeconds);
@@ -59,7 +65,6 @@ function updateScroll() {
     const total = props.duration;
     const timeToFall = props.timeToFall;
     const elapsedSeconds = props.elapsedSeconds;
-
     if (total <= 0) return;
 
     const visualTime = elapsedSeconds - timeToFall;
@@ -111,7 +116,7 @@ function updateScroll() {
 
 function stage0(startOffset, centerX) {
     indicator.value.style.transform = `translateX(${centerX}px)`;
-    viewBox.value.x = startOffset - centerX;
+    viewBox.value.x = additionalStartShift + startOffset - centerX;
 }
 function stage1(visualTime, stage1Duration, startOffset, centerX) {
     const p = visualTime / stage1Duration;
@@ -122,12 +127,12 @@ function stage1(visualTime, stage1Duration, startOffset, centerX) {
 
 
 function stage2(visualTime, total, fullWidth, startOffset, endOffset, centerX) {
-    const scrollableContent = fullWidth - endOffset;
+    const scrollableContent = fullWidth - endOffset - startOffset;
 
     let p = visualTime / total;
     p = Math.min(Math.max(p, 0), 1);
 
-    const viewBoxX = startOffset - centerX + (scrollableContent * p);
+    const viewBoxX = additionalStartShift + startOffset - centerX + (scrollableContent * p);
 
     indicator.value.style.transform = `translateX(${centerX}px)`;
     viewBox.value.x = viewBoxX;
@@ -173,7 +178,7 @@ watch(() => props.elapsedSeconds, (t) => {
 .sheet-strip-wrapper {
     position: absolute;
     top: 10vh;
-    height: 30vh;
+    height: 20vh;
     width: 100vw;
     overflow: hidden;
     pointer-events: none;
@@ -182,11 +187,12 @@ watch(() => props.elapsedSeconds, (t) => {
 
 .sheet-strip-scroll {
     background: white;
+    height: 20vh;
 }
 
 .sheet-strip-wrapper svg {
-    height: auto;
-    width: auto;
+    height: 20vh;
+    width: 100vw;
 }
 
 .sheet-indicator {

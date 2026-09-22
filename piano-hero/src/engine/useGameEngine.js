@@ -21,6 +21,9 @@ export default function useGameEngine() {
     const isRecording = ref(false);
 
     const hasRecording = ref(false);
+    const recordingTempo = ref(60);
+    const recordingBeatsPerMeasure = ref(4);
+    const recordingBeatUnits = ref(4);
 
     const displayMusicRoll = ref(false);
 
@@ -342,6 +345,15 @@ export default function useGameEngine() {
     function setPlaybackSpeed(value) {
         playbackSpeed.value = Math.max(0.1, Math.min(2.0, value));
     }
+    function setRecordingTempo(value) {
+        recordingTempo.value = value;
+    }
+    function setRecordingBeatsPerMeasure(value) {
+        recordingBeatsPerMeasure.value = value;
+    }
+    function setRecordingBeatUnit(value) {
+        recordingBeatUnits.value = value;
+    }
 
     function recOn() {
         recordedNotes.value = [];
@@ -355,9 +367,18 @@ export default function useGameEngine() {
 
     function saveRec() {
         const midi = new Midi();
+        
+        midi.header.setTempo(recordingTempo.value)
+        midi.header.timeSignatures.push({
+            ticks: 0,
+            time: 0,
+            measures: 0,
+            timeSignature: [recordingBeatsPerMeasure.value, recordingBeatUnits.value]
+        });
+        midi.header.update();
+
         const track = midi.addTrack();
         recordedNotes.value.forEach(note => track.addNote(note));
-
 
         const bytes = midi.toArray();
         const blob = new Blob([bytes], { type: "audio/midi" });
@@ -467,6 +488,11 @@ export default function useGameEngine() {
 
             note.durationTicks = quantisedDurationTicks;
             note.duration = originalNote.duration * (note.durationTicks / originalNote.durationTicks);
+
+            let quantiseStartTicks = Math.round(note.ticks / step) * step;
+
+            note.ticks = quantiseStartTicks;
+            // note.time = original
         }
     }
     function recomputeEndOfTrackTicks(tracks) {
@@ -500,10 +526,6 @@ export default function useGameEngine() {
             }
         }
     }
-
-
-
-
 
     function prepareFallingNotes() {
         fallingNotes.value = notes.value.map(note => {
@@ -575,7 +597,11 @@ export default function useGameEngine() {
         isSeeking,
         isRecording,
         hasRecording,
+
         playbackSpeed,
+        recordingTempo,
+        recordingBeatsPerMeasure,
+        recordingBeatUnits,
 
         startTime,
         pausedAt,
@@ -592,7 +618,12 @@ export default function useGameEngine() {
         stop,
         start,
         seekTo,
+
+        // setters
         setPlaybackSpeed,
+        setRecordingTempo,
+        setRecordingBeatsPerMeasure,
+        setRecordingBeatUnit,
 
         // recording
         recOn,
