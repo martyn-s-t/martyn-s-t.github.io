@@ -81,35 +81,37 @@ function updateScroll() {
 
     const sum = percentageStage1 + percentageStage2 + percentageStage3;
 
+    // console.log(percentageStage1, percentageStage2, percentageStage3, sum)
+
     const stage1Duration = total * percentageStage1;
     const stage2Duration = total * percentageStage2;
     const stage3Duration = total * percentageStage3;
 
     // --- Stage 0 ---
     if (visualTime <= 0) {
-        return stage0(startOffset);
+        return stage0(startOffset, centerX);
     }
 
     // --- Stage 1 ---
-    if (visualTime <= stage1Duration) {
-        return stage1(visualTime, stage1Duration, startOffset, centerX);
-    }
+    // if (visualTime <= stage1Duration) {
+    //     return stage1(visualTime, stage1Duration, startOffset, centerX);
+    // }
 
 
     // --- Stage 2 ---
-    if (visualTime <= stage1Duration + stage2Duration) {
-        return stage2(visualTime, stage1Duration, stage2Duration, fullWidth, visibleWidth, centerX);
-    }
+    // if (visualTime <= stage1Duration + stage2Duration) {
+    return stage2(visualTime, total, fullWidth, startOffset, endOffset, centerX);
+    // }
 
-    if (visualTime <= total) {
-        return stage3(visualTime, stage1Duration, stage2Duration, stage3Duration, visibleWidth, centerX, fullWidth);
-    }
+    // if (visualTime <= total) {
+    //     return stage3(visualTime, stage1Duration, stage2Duration, stage3Duration, visibleWidth, centerX, fullWidth);
+    // }
 }
 
 
-function stage0(startOffset) {
-    indicator.value.style.transform = `translateX(${startOffset}px)`;
-    viewBox.value.x = 0;
+function stage0(startOffset, centerX) {
+    indicator.value.style.transform = `translateX(${centerX}px)`;
+    viewBox.value.x = startOffset - centerX;
 }
 function stage1(visualTime, stage1Duration, startOffset, centerX) {
     const p = visualTime / stage1Duration;
@@ -119,14 +121,13 @@ function stage1(visualTime, stage1Duration, startOffset, centerX) {
 }
 
 
-function stage2(visualTime, stage1Duration, stage2Duration, fullWidth, visibleWidth, centerX) {
-    const scrollableContent = fullWidth - visibleWidth;
+function stage2(visualTime, total, fullWidth, startOffset, endOffset, centerX) {
+    const scrollableContent = fullWidth - endOffset;
 
-    const stage2Time = visualTime - stage1Duration;
-    let p = stage2Time / stage2Duration;
+    let p = visualTime / total;
     p = Math.min(Math.max(p, 0), 1);
 
-    const viewBoxX = scrollableContent * p;
+    const viewBoxX = startOffset - centerX + (scrollableContent * p);
 
     indicator.value.style.transform = `translateX(${centerX}px)`;
     viewBox.value.x = viewBoxX;

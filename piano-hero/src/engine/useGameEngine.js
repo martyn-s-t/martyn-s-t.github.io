@@ -411,8 +411,8 @@ export default function useGameEngine() {
             addBpmFromFirstNote(midi);
         }
         trimTracks(midi.tracks, midi.header.ppq);
-        enableQuantiseNotes.value && quantiseTracks(midi.tracks, midi.header.ppq, quantiseSubdivisions.value);
-        // recomputeEndOfTrackTicks(midi.tracks);
+        quantiseMidi(midi);
+        recomputeEndOfTrackTicks(midi.tracks);
 
         const left = midi.tracks[1]?.notes || [];
         const right = midi.tracks[0]?.notes || [];
@@ -420,46 +420,61 @@ export default function useGameEngine() {
         notes.value = [...left.map(n => ({ ...n, hand: "left" })),
         ...right.map(n => ({ ...n, hand: "right" }))];
 
-        duration.value = ticksToSeconds(
-            midi.tracks.reduce((max, track) => {
-                return Math.max(max, track.endOfTrackTicks)
-            }, 0), midi);
+        duration.value = midi.tracks.reduce((max, track) => {
+            let endOfTrack = track.notes.reduce((max, note) => {
+                return Math.max(note.duration + note.time, max);
+            }, 0);
+            return Math.max(endOfTrack, max);
+        }, 0);
+
+
         totalSeconds.value = duration.value + timeToFall.value;
 
         prepareFallingNotes();
     }
-    function quantiseTracks(tracks, ppq, subdivision) {
+
+    function quantiseMidi(midi) {
+        const bpm = midi.header.tempos[0].bpm;
+        const durations = new Set();
+
+        for (const track of midi.tracks) {
+            for (const note of track.notes) {
+                durations.add(note.durationTicks);
+            }
+        }
+
+        console.log([...durations].sort((a, b) => a - b));
+
+        if (enableQuantiseNotes.value === false) return midi;
+        return quantiseTracks(midi.tracks, midi.header.ppq, quantiseSubdivisions.value, bpm);
+    }
+
+    function quantiseTracks(tracks, ppq, subdivision, bpm) {
         for (const track of tracks) {
-            quantiseNotes(track.notes, ppq, subdivision);
+            quantiseNotes(track.notes, ppq, subdivision, bpm);
         }
     }
 
-    function quantiseNotes(notes, ppq, subdivision) {
+    function quantiseNotes(notes, ppq, subdivision, bpm) {
         const step = ppq / subdivision;
-
+        console.log({ ppq, subdivision, step });
         for (const note of notes) {
+
+            let originalNote = JSON.parse(JSON.stringify(note));
 
             let quantisedDurationTicks = Math.round(note.durationTicks / step) * step;
             if (quantisedDurationTicks === 0) quantisedDurationTicks = step;
 
             note.durationTicks = quantisedDurationTicks;
-            note.duration = note.durationTicks / ppq;
+            note.duration = originalNote.duration * (note.durationTicks / originalNote.durationTicks);
         }
     }
     function recomputeEndOfTrackTicks(tracks) {
-        for (const track of tracks) {
-            let maxTick = 0;
-            let maxTime = 0;
-
-            for (const note of track.notes) {
-                const endTick = note.ticks + note.durationTicks;
-                const endTime = note.time + note.duration;
-                if (endTick > maxTick) maxTick = endTick;
-                if (endTime > maxTime) maxTime = endTime;
-            }
-
-            track.endOfTrackTicks = maxTick;
-        }
+        return tracks.forEach(track => {
+            track.endOfTrackTicks = track.notes.reduce((max, note) => {
+                return Math.max(note.durationTicks + note.ticks, max);
+            }, 0);
+        });
     }
 
     function trimTracks(tracks, ppq) {
@@ -531,33 +546,6 @@ export default function useGameEngine() {
         requestAnimationFrame(tick);
     }
 
-    function ticksToSeconds(ticks, midi) {
-        const ppq = midi.header.ppq;
-        const tempos = midi.header.tempos;
-
-        let last = tempos[0];
-        let seconds = 0;
-
-        for (let i = 1; i < tempos.length; i++) {
-            const t = tempos[i];
-
-            if (ticks < t.ticks) {
-                const deltaTicks = ticks - last.ticks;
-                seconds += deltaTicks * (60 / last.bpm) / ppq;
-                return seconds;
-            }
-
-            const deltaTicks = t.ticks - last.ticks;
-            seconds += deltaTicks * (60 / last.bpm) / ppq;
-            last = t;
-        }
-
-        const deltaTicks = ticks - last.ticks;
-        seconds += deltaTicks * (60 / last.bpm) / ppq;
-
-        return seconds;
-    }
-
     function addBpmFromFirstNote(midi) {
         const bpm = bpmFromNote(midi.tracks[0].notes[0], midi.header.ppq);
         midi.header.tempos.push({ bpm, ticks: 0 });
@@ -626,6 +614,9 @@ export default function useGameEngine() {
         loadMidi,
         initMidiDevices,
         initAudio,
+
+        // manipulation
+        quantiseMidi,
 
         // timing
         getNow,

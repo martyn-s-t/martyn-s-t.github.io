@@ -2,6 +2,9 @@
 import { onMounted, ref } from "vue";
 import { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import midiToMusicXml from "./../../engine/midiToMusicXml";
+import useGameEngine from "./../../engine/useGameEngine";
+
+const { quantiseMidi } = useGameEngine();
 
 const emit = defineEmits(["navigate"]);
 
@@ -18,6 +21,7 @@ onMounted(async () => {
         localStorage.getItem(`song-${selectedSong.value.id}`)
     );
 
+    quantiseMidi(midi.value);
     musicXml.value = midiToMusicXml(midi.value);
 
     window.xml = musicXml.value
