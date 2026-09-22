@@ -434,7 +434,7 @@ export default function useGameEngine() {
     }
 
     function quantiseMidi(midi) {
-        const bpm = midi.header.tempos[0].bpm;
+        // const bpm = midi.header.tempos[0].bpm;
         const durations = new Set();
 
         for (const track of midi.tracks) {
@@ -446,16 +446,16 @@ export default function useGameEngine() {
         console.log([...durations].sort((a, b) => a - b));
 
         if (enableQuantiseNotes.value === false) return midi;
-        return quantiseTracks(midi.tracks, midi.header.ppq, quantiseSubdivisions.value, bpm);
+        return quantiseTracks(midi.tracks, midi.header.ppq, quantiseSubdivisions.value);
     }
 
-    function quantiseTracks(tracks, ppq, subdivision, bpm) {
+    function quantiseTracks(tracks, ppq, subdivision) {
         for (const track of tracks) {
-            quantiseNotes(track.notes, ppq, subdivision, bpm);
+            quantiseNotes(track.notes, ppq, subdivision);
         }
     }
 
-    function quantiseNotes(notes, ppq, subdivision, bpm) {
+    function quantiseNotes(notes, ppq, subdivision) {
         const step = ppq / subdivision;
         console.log({ ppq, subdivision, step });
         for (const note of notes) {

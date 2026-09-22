@@ -120,7 +120,7 @@ function processTrack(track, ticks, staffNumber, ticksPerMeasure, measureIndex, 
     for (const tick of ticks) {
         if (tick !== lastTick) {
             const remainingTicks = tick - lastTick;
-            if (remainingTicks)
+            if (remainingTicks > 0)
                 xml += createRest(remainingTicks, staffNumber, division);
             // xml += createForward(tick - lastTick);
         }
