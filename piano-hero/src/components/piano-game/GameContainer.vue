@@ -31,7 +31,11 @@ const {
     isSeeking,
     isRecording,
     hasRecording,
+
     playbackSpeed,
+    recordingTempo,
+    recordingBeatsPerMeasure,
+    recordingBeatUnits,
 
     elapsedSeconds,
     totalSeconds,
@@ -42,7 +46,11 @@ const {
     stop,
     start,
     seekTo,
+
     setPlaybackSpeed,
+    setRecordingTempo,
+    setRecordingBeatsPerMeasure,
+    setRecordingBeatUnit,
 
     recOn,
     recOff,
@@ -108,9 +116,11 @@ onBeforeUnmount(() => {
 
 <template>
     <div class="game-canvas-layer">
-        <ControllerCanvas v-model:mode="mode" v-model:isRecording="isRecording" v-model:hasRecording="hasRecording" :playbackSpeed="playbackSpeed"
+        <ControllerCanvas 
+                v-model:mode="mode" v-model:isRecording="isRecording" v-model:hasRecording="hasRecording" 
+                :playbackSpeed="playbackSpeed" :bpm="recordingTempo" :beatsPerMeasure="recordingBeatsPerMeasure" :beatUnit="recordingBeatUnits"
                 @pause="pause" @play="play" @stop="stop" @start="start" 
-                @change-playback-speed="setPlaybackSpeed"
+                @change-playback-speed="setPlaybackSpeed" @change-recording-tempo="setRecordingTempo" @change-recording-beats-per-measure="setRecordingBeatsPerMeasure" @change-recording-beat-unit="setRecordingBeatUnit"
                 @music-roll-on="musicRollOn" @music-roll-off="musicRollOff" :displayMusicRoll="displayMusicRoll"
                 @rec-on="recOn" @rec-off="recOff" @save-rec="saveRec" @navigate="navigate" />
         <ProgressCanvas v-if="mode !== 'free'" v-model:isSeeking="isSeeking" :elapsedSeconds="elapsedSeconds" :totalSeconds="totalSeconds" :progressPercentage="progressPercentage" @seek-to="seekTo" />

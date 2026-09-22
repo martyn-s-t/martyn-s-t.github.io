@@ -1,71 +1,72 @@
 
 
-function addNoteWithSplitting(note) {
-    let remaining = note.duration;
-
-    while (remaining > 0) {
-        const available = measureTicks - currentMeasureTicks;
-
-        // If measure is full, start a new one
-        if (available === 0) {
-            startNewMeasure();
-        }
-
-        const chunk = Math.min(available, remaining);
-
-        const isFirstChunk = remaining === note.duration;
-        const isLastChunk = remaining - chunk === 0;
-
-        addNoteToXML({
-            pitch: note.pitch,
-            duration: chunk,
-            tieStart: isFirstChunk && !isLastChunk,
-            tieStop: isLastChunk && !isFirstChunk,
-            tieContinue: !isFirstChunk && !isLastChunk,
-            voice: note.voice,
-            staff: note.staff
-        });
-
-        currentMeasureTicks += chunk;
-        remaining -= chunk;
-
-        if (remaining > 0 && currentMeasureTicks === measureTicks) {
-            startNewMeasure();
-        }
-    }
-}
-
-
 function pitchFromNote(note) {
     const step = note.name[0];
     const alter = note.name.includes("#") ? 1 : 0;
     const octave = Number(note.name.slice(-1));
     return { step, alter, octave }
 }
+function getNoteType(duration, divisions) {
+    const quarter = divisions;
 
-function createNote(note, staffNumber, isChord = false) {
-    const { step, alter, octave } = pitchFromNote(note)
+    const lookup = [
+        { duration: quarter * 4, type: "whole", dots: 0 },
+        { duration: quarter * 3, type: "half", dots: 1 },
+        { duration: quarter * 2, type: "half", dots: 0 },
+
+        { duration: quarter * 1.5, type: "quarter", dots: 1 },
+        { duration: quarter, type: "quarter", dots: 0 },
+
+        { duration: quarter * 0.75, type: "eighth", dots: 1 },
+        { duration: quarter / 2, type: "eighth", dots: 0 },
+
+        { duration: quarter * 0.375, type: "16th", dots: 1 },
+        { duration: quarter / 4, type: "16th", dots: 0 },
+
+        { duration: quarter / 8, type: "32nd", dots: 0 }
+    ];
+
+    return lookup.find(x => x.duration === duration);
+}
+
+
+function createNote(note, staffNumber, divisions, isChord = false) {
+    const { step, alter, octave } = pitchFromNote(note);
+    const notation = getNoteType(note.durationTicks, divisions);
+
+    const typeXml = notation ? `<type>${notation.type}</type>` : "";
+    const dotsXml = notation ? "<dot/>".repeat(notation.dots) : "";
+    const tieXml = `${note.endsTie ? '<tie type="start"/>' : ''} ${note.startsTie ? '<tie type="stop"/>' : ''}`;
+
+    const notationXml = note.startsTie || note.endsTie ? ` <notations> ${note.endsTie ? '<tied type="start"/>' : ''} ${note.startsTie ? '<tied type="stop"/>' : ''} </notations>` : '';
+
     return `
     <note>
-        ${isChord ? "<chord/>" : ""}
+        ${isChord ? '<chord/>' : ''}
         <pitch>
             <step>${step}</step>
-            <alter>${alter}</alter>
+            ${alter ? `<alter>${alter}</alter>` : ''}
             <octave>${octave}</octave>
         </pitch>
+        ${tieXml}
         <duration>${note.durationTicks}</duration>
+        ${typeXml}
+        ${dotsXml}
         <voice>${staffNumber}</voice>
         <staff>${staffNumber}</staff>
+        ${notationXml}
     </note>`;
 }
-function createRest(duration, staffNumber) {
-    return `<note>
+
+
+function createRest(durationTicks, staffNumber, divisions) {
+    return `
+    <note>
         <rest/>
-        <duration>${duration}</duration>
+        <duration>${durationTicks}</duration>
         <voice>${staffNumber}</voice>
         <staff>${staffNumber}</staff>
     </note>`
-
 }
 function createForward(deltaTicks) {
     return `
@@ -79,7 +80,7 @@ function createBackup(deltaTicks) {
         <duration>${deltaTicks}</duration>
     </backup>`;
 }
-function createAttributes(divisions) {
+function createAttributes(divisions, beatsPerMeasure, beatUnit) {
     return `
     <attributes>
         <divisions>${divisions}</divisions>
@@ -92,6 +93,10 @@ function createAttributes(divisions) {
             <sign>F</sign>
             <line>4</line>
         </clef>
+        <time>
+            <beats>${beatsPerMeasure}</beats>
+            <beat-type>${beatUnit}</beat-type>
+        </time>
     </attributes>`;
 }
 function createMetronome(bpm) {
@@ -105,7 +110,7 @@ function createMetronome(bpm) {
         </direction-type>
     </direction>`;
 }
-function processTrack(track, ticks, staffNumber, ticksPerMeasure, measureIndex) {
+function processTrack(track, ticks, staffNumber, ticksPerMeasure, measureIndex, division) {
     if (!ticks.length) return "";
 
     let xml = "";
@@ -114,12 +119,15 @@ function processTrack(track, ticks, staffNumber, ticksPerMeasure, measureIndex) 
 
     for (const tick of ticks) {
         if (tick !== lastTick) {
-            xml += createForward(tick - lastTick);
+            const remainingTicks = tick - lastTick;
+            if (remainingTicks > 0)
+                xml += createRest(remainingTicks, staffNumber, division);
+            // xml += createForward(tick - lastTick);
         }
 
         const notes = track[tick];
         notes.forEach((note, index) => {
-            xml += createNote(note, staffNumber, index > 0);
+            xml += createNote(note, staffNumber, division, index > 0);
         });
         let maxDuration = notes.reduce((cumulative, current) => Math.max(cumulative, current.durationTicks), 0);
 
@@ -131,24 +139,24 @@ function processTrack(track, ticks, staffNumber, ticksPerMeasure, measureIndex) 
     return xml;
 }
 
-function buildMeasure(groupedMeasure, divisions, bpm, measureIndex, beatsPerMeasure) {
+function buildMeasure(groupedMeasure, divisions, bpm, measureIndex, beatsPerMeasure, beatUnit) {
     const trebleTrack = groupedMeasure[0] ?? {};
     const bassTrack = groupedMeasure[1] ?? {};
 
     const trebleTicks = Object.keys(trebleTrack).map(Number).sort((a, b) => a - b);
     const bassTicks = Object.keys(bassTrack).map(Number).sort((a, b) => a - b);
 
-    const measureDuration = divisions * beatsPerMeasure;
+    const measureDuration = divisions * beatsPerMeasure * (4 / beatUnit);
 
     let xml = "";
 
     if (measureIndex === 0) {
-        xml += createAttributes(divisions);
+        xml += createAttributes(divisions, beatsPerMeasure, beatUnit);
         xml += createMetronome(bpm);
     }
 
 
-    xml += processTrack(trebleTrack, trebleTicks, 1, measureDuration, measureIndex);
+    xml += processTrack(trebleTrack, trebleTicks, 1, measureDuration, measureIndex, divisions);
 
     if (measureDuration > 0)
         xml += createBackup(measureDuration);
@@ -157,11 +165,62 @@ function buildMeasure(groupedMeasure, divisions, bpm, measureIndex, beatsPerMeas
 
     return `<measure number="${measureIndex + 1}">${xml}</measure>`;
 }
+function splitNoteAcrossMeasures(note, measureLengthTicks) {
+    const result = [];
 
-export default function midiToMusicXml(midiJson, bpm = 120, beatsPerMeasure = 4) {
+    let currentStart = note.ticks;
+    const noteEnd = note.ticks + note.durationTicks;
+
+    let first = true;
+
+    while (currentStart < noteEnd) {
+        const measureEnd =
+            (Math.floor(currentStart / measureLengthTicks) + 1) *
+            measureLengthTicks;
+
+        const partEnd = Math.min(measureEnd, noteEnd);
+
+        result.push({
+            ...note,
+            ticks: currentStart,
+            durationTicks: partEnd - currentStart,
+
+            startsTie: !first,
+            endsTie: false
+        });
+
+        currentStart = partEnd;
+        first = false;
+    }
+
+    if (result.length > 1) {
+        result.forEach((fragment, index) => {
+            fragment.startsTie = index > 0;
+            fragment.endsTie = index < result.length - 1;
+        });
+    }
+
+    return result;
+}
+
+
+export default function midiToMusicXml(midiJson) {
+    const timeSignature = midiJson.header.timeSignatures?.[0]?.timeSignature ?? [4, 4];
+    const [beatsPerMeasure, beatUnit] = timeSignature;
+
     const ppq = midiJson.header.ppq;
     const divisions = ppq;
-    bpm = midiJson.header.tempos[0].bpm
+    let bpm = midiJson.header?.tempos?.[0]?.bpm;
+
+    if (!bpm) {
+        const note = midiJson.tracks[0].notes[0];
+        console.log(note);
+        const secondsPerTick = note.duration / note.durationTicks;
+        const secondsPerQuarter = secondsPerTick * ppq;
+        bpm = Math.round(60 / secondsPerQuarter);
+    }
+
+    console.log(`BPM is ${bpm}`);
 
     const title = midiJson.header.name || "";
     const numberOfTracks = midiJson.tracks.length;
@@ -171,9 +230,9 @@ export default function midiToMusicXml(midiJson, bpm = 120, beatsPerMeasure = 4)
 
     }))
 
-    const notes = midiJson.tracks.flatMap(t => t.notes).sort((a, b) => a.ticks - b.ticks);
+    const measureLengthTicks = ppq * beatsPerMeasure * (4 / beatUnit);
+    const notes = midiJson.tracks.flatMap(t => t.notes.flatMap(note => splitNoteAcrossMeasures(note, measureLengthTicks))).sort((a, b) => a.ticks - b.ticks);
 
-    const measureLengthTicks = ppq * beatsPerMeasure;
     const measures = [];
     for (const note of notes) {
         const index = Math.floor(note.ticks / measureLengthTicks);
@@ -206,9 +265,7 @@ export default function midiToMusicXml(midiJson, bpm = 120, beatsPerMeasure = 4)
             </part-list>
 
             <part id="P1">
-                ${groupedMeasures.map((gm, i) =>
-        buildMeasure(gm, divisions, bpm, i, beatsPerMeasure)
-    ).join("")}
+                ${groupedMeasures.map((groupedMeasure, i) => buildMeasure(groupedMeasure, divisions, bpm, i, beatsPerMeasure, beatUnit)).join("")}
             </part>
         </score-partwise>
     `;

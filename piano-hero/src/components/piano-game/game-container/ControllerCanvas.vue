@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 
-const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "music-roll-on", "music-roll-off", "change-playback-speed"]);
+const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "music-roll-on", "music-roll-off", "change-playback-speed", "change-recording-tempo", "change-recording-beats-per-measure", "change-recording-beat-unit"]);
 
 const props = defineProps({
     mode: String,
@@ -9,9 +9,17 @@ const props = defineProps({
     isRecording: Boolean,
     hasRecording: Boolean,
     displayMusicRoll: Boolean,
+    bpm: Number,
+    beatsPerMeasure: Number,
+    beatUnit: Number,
 });
 
+console.log(props);
+
 const playbackSpeedLocal = ref(props.playbackSpeed * 100);
+const bpmLocal = ref(props.bpm);
+const beatsPerMeasureLocal = ref(props.beatsPerMeasure);
+const beatUnitLocal = ref(props.beatUnit);
 
 function toggleRec() {
     if (props.isRecording) {
@@ -40,6 +48,16 @@ function navigate() {
 function onPlaybackSpeedChanged(value) {
     emit("change-playback-speed", value / 100);
 }
+function onTempoSpeedChange(value) {
+    emit("change-recording-tempo", value);
+}
+function onBeatsPerMeasureChanged(value) {
+    emit("change-recording-beats-per-measure", value);
+}
+function onBeatUnitChanged(value) {
+    emit("change-recording-beat-unit", value);
+}
+
 
 </script>
 
@@ -83,11 +101,24 @@ function onPlaybackSpeedChanged(value) {
         </v-col>
 
         <v-col cols="1" class="d-flex justify-center h-100">
-            <v-number-input v-model="playbackSpeedLocal" @update:model-value="onPlaybackSpeedChanged" :min="10" :max="200" :step="10" control-variant="split" hide-detail="auto" density="compact"></v-number-input>
+            <v-number-input v-if="mode !== 'free'" v-model="playbackSpeedLocal" @update:model-value="onPlaybackSpeedChanged" :min="10" :max="200" :step="10" control-variant="split" hide-detail="auto" density="compact"></v-number-input>
+            <v-number-input v-if="mode === 'free'" v-model="bpmLocal" @update:model-value="onTempoSpeedChange" :min="30" :max="240" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Tempo"></v-number-input>
         </v-col>
 
         <!-- Spacer -->
-        <v-col cols="2"></v-col>
+        <v-col cols="2">
+            <v-row>
+                <v-col>
+                    <v-number-input v-if="mode === 'free'" v-model="beatsPerMeasureLocal" @update:model-value="onBeatsPerMeasureChanged" :min="1" :max="32" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Beats Per Measure"></v-number-input>
+                </v-col>
+                <v-col cols="auto" v-if="mode === 'free'" >
+                    <v-icon size="x-large">mdi-slash-forward</v-icon>
+                </v-col>
+                <v-col>
+                    <v-number-input v-if="mode === 'free'" v-model="beatUnitLocal" @update:model-value="onBeatUnitChanged" :min="1" :max="32" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Beat Unit"></v-number-input>
+                </v-col>
+            </v-row>
+        </v-col>
 
         <v-col cols="1" class="d-flex justify-center h-100">
             <v-btn v-if="mode !== 'free'" @click="toggleMusicRoll" hide-detail="auto" density="compact" block>

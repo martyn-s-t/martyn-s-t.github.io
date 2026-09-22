@@ -17,8 +17,9 @@ const stripWrapper = ref(null);
 const svg = ref(null);
 const viewBox = ref(null);
 
-const startOffset = 90;
-const endOffset = 140;
+let startOffset = 130;
+let additionalStartShift = 0;
+let endOffset = 50;
 
 let osmd = null;
 
@@ -50,6 +51,11 @@ async function renderOsmd() {
     osmd.render();
 
     svg.value = osmdContainer.value.querySelector("svg");
+    const originalWidth  = svg.value.getAttribute("width");
+    if (originalWidth < window.innerWidth) {
+        svg.value.setAttribute("width", window.innerWidth)
+        additionalStartShift = (window.innerWidth - originalWidth) / 2;
+    }
     viewBox.value = svg.value.viewBox.baseVal;
 
     updateScroll(props.elapsedSeconds);
@@ -59,7 +65,6 @@ function updateScroll() {
     const total = props.duration;
     const timeToFall = props.timeToFall;
     const elapsedSeconds = props.elapsedSeconds;
-
     if (total <= 0) return;
 
     const visualTime = elapsedSeconds - timeToFall;
@@ -81,35 +86,37 @@ function updateScroll() {
 
     const sum = percentageStage1 + percentageStage2 + percentageStage3;
 
+    // console.log(percentageStage1, percentageStage2, percentageStage3, sum)
+
     const stage1Duration = total * percentageStage1;
     const stage2Duration = total * percentageStage2;
     const stage3Duration = total * percentageStage3;
 
     // --- Stage 0 ---
     if (visualTime <= 0) {
-        return stage0(startOffset);
+        return stage0(startOffset, centerX);
     }
 
     // --- Stage 1 ---
-    if (visualTime <= stage1Duration) {
-        return stage1(visualTime, stage1Duration, startOffset, centerX);
-    }
+    // if (visualTime <= stage1Duration) {
+    //     return stage1(visualTime, stage1Duration, startOffset, centerX);
+    // }
 
 
     // --- Stage 2 ---
-    if (visualTime <= stage1Duration + stage2Duration) {
-        return stage2(visualTime, stage1Duration, stage2Duration, fullWidth, visibleWidth, centerX);
-    }
+    // if (visualTime <= stage1Duration + stage2Duration) {
+    return stage2(visualTime, total, fullWidth, startOffset, endOffset, centerX);
+    // }
 
-    if (visualTime <= total) {
-        return stage3(visualTime, stage1Duration, stage2Duration, stage3Duration, visibleWidth, centerX, fullWidth);
-    }
+    // if (visualTime <= total) {
+    //     return stage3(visualTime, stage1Duration, stage2Duration, stage3Duration, visibleWidth, centerX, fullWidth);
+    // }
 }
 
 
-function stage0(startOffset) {
-    indicator.value.style.transform = `translateX(${startOffset}px)`;
-    viewBox.value.x = 0;
+function stage0(startOffset, centerX) {
+    indicator.value.style.transform = `translateX(${centerX}px)`;
+    viewBox.value.x = additionalStartShift + startOffset - centerX;
 }
 function stage1(visualTime, stage1Duration, startOffset, centerX) {
     const p = visualTime / stage1Duration;
@@ -119,14 +126,13 @@ function stage1(visualTime, stage1Duration, startOffset, centerX) {
 }
 
 
-function stage2(visualTime, stage1Duration, stage2Duration, fullWidth, visibleWidth, centerX) {
-    const scrollableContent = fullWidth - visibleWidth;
+function stage2(visualTime, total, fullWidth, startOffset, endOffset, centerX) {
+    const scrollableContent = fullWidth - endOffset - startOffset;
 
-    const stage2Time = visualTime - stage1Duration;
-    let p = stage2Time / stage2Duration;
+    let p = visualTime / total;
     p = Math.min(Math.max(p, 0), 1);
 
-    const viewBoxX = scrollableContent * p;
+    const viewBoxX = additionalStartShift + startOffset - centerX + (scrollableContent * p);
 
     indicator.value.style.transform = `translateX(${centerX}px)`;
     viewBox.value.x = viewBoxX;
@@ -172,7 +178,7 @@ watch(() => props.elapsedSeconds, (t) => {
 .sheet-strip-wrapper {
     position: absolute;
     top: 10vh;
-    height: 30vh;
+    height: 20vh;
     width: 100vw;
     overflow: hidden;
     pointer-events: none;
@@ -181,11 +187,12 @@ watch(() => props.elapsedSeconds, (t) => {
 
 .sheet-strip-scroll {
     background: white;
+    height: 20vh;
 }
 
 .sheet-strip-wrapper svg {
-    height: auto;
-    width: auto;
+    height: 20vh;
+    width: 100vw;
 }
 
 .sheet-indicator {
