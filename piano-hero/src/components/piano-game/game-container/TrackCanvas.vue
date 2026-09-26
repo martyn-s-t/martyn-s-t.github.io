@@ -7,7 +7,10 @@ const props = defineProps({
     duration: Number,
     startTime: Number,
     elapsedSeconds: Number,
+    mode: String,
 });
+
+const emit = defineEmits(["assign-left", "assign-right"]);
 
 const canvasElement = ref(null);
 let canvasContext = null;
@@ -22,9 +25,19 @@ const rightWhite = "rgba(0, 150, 255, 0.8)";
 const leftBlack = "rgba(0, 130, 60, 1)";
 const rightBlack = "rgba(0, 60, 130, 1)";
 
+const whiteKeyWidth = ref(0);
+const blackKeyWidth = ref(0);
+
 function resizeCanvasToCssSize(canvas) {
     canvas.width = canvas.clientWidth;
     canvas.height = canvas.clientHeight;
+
+    const w = canvas.width;
+    const h = canvas.height;
+
+    const totalWhiteKeys = 52;
+    whiteKeyWidth.value = w / totalWhiteKeys;
+    blackKeyWidth.value = whiteKeyWidth.value * 0.6;
 }
 
 function prepareVisualNotes() {
@@ -38,13 +51,22 @@ function prepareVisualNotes() {
 
     pixelsPerSecond = fallDistancePx / props.timeToFall;
 
-    fallingNotes = props.notes.map(note => ({
-        ...note,
-        // top of note starts above canvas
-        yPosition: -note.duration * pixelsPerSecond,
-        height: note.duration * pixelsPerSecond,
-        speed: pixelsPerSecond
-    }));
+    fallingNotes = props.notes.map(note => {
+        const isBlack = isBlackMidi(note.midi);
+        const whiteIndex = getWhiteKeyIndex(note.midi);
+        const xPosition = isBlack ? whiteIndex * whiteKeyWidth.value - blackKeyWidth.value / 2 : whiteIndex * whiteKeyWidth.value;
+        const width = isBlack ? blackKeyWidth.value : whiteKeyWidth.value;
+        return {
+            ...note,
+            isBlack: isBlack,
+            xPosition: xPosition,
+            yPosition: -note.duration * pixelsPerSecond,
+            height: note.duration * pixelsPerSecond,
+            width: width,
+            speed: pixelsPerSecond
+        }
+    });
+    window.fallingNotes = fallingNotes;
 }
 
 function animationLoop() {
@@ -54,40 +76,23 @@ function animationLoop() {
 
     canvasContext.clearRect(0, 0, w, h);
 
-    const totalWhiteKeys = 52;
-    const whiteKeyWidth = w / totalWhiteKeys;
-    const blackKeyWidth = whiteKeyWidth * 0.6;
-
     fallingNotes.forEach(note => {
-        renderNote(note, whiteKeyWidth, blackKeyWidth, h, props.elapsedSeconds);
+        renderNote(note, props.elapsedSeconds);
     });
 
     animationFrameId = requestAnimationFrame(animationLoop);
 }
 
-function renderNote(note, whiteKeyWidth, blackKeyWidth, canvasHeight, elapsedSeconds) {
+function renderNote(note, elapsedSeconds) {
     if (elapsedSeconds < note.startTime || elapsedSeconds > note.endTime) return;
 
-    const whiteIndex = getWhiteKeyIndex(note.midi);
-    if (whiteIndex === null) return;
-
-    const isBlack = isBlackMidi(note.midi);
-    const xPosition = isBlack
-        ? whiteIndex * whiteKeyWidth - blackKeyWidth / 2
-        : whiteIndex * whiteKeyWidth;
-
     note.yPosition = (elapsedSeconds - note.startTime) * pixelsPerSecond - note.height;
-
-    const fill = note.hand === "left"
-        ? (isBlack ? leftBlack : leftWhite)
-        : (isBlack ? rightBlack : rightWhite);
-
+    const fill = note.hand === "left" ? (note.isBlack ? leftBlack : leftWhite) : (note.isBlack ? rightBlack : rightWhite);
+    
     canvasContext.fillStyle = fill;
 
-    const width = isBlack ? blackKeyWidth : whiteKeyWidth;
-
-    canvasContext.fillRect(xPosition, note.yPosition, width, note.height);
-    canvasContext.strokeRect(xPosition, note.yPosition, width, note.height);
+    canvasContext.fillRect(note.xPosition, note.yPosition, note.width, note.height);
+    canvasContext.strokeRect(note.xPosition, note.yPosition, note.width, note.height);
 }
 
 function isBlackMidi(midiNumber) {
@@ -103,6 +108,38 @@ function getWhiteKeyIndex(midiNumber) {
     return index;
 }
 
+function getNoteAt(x, y) {
+    for (let i = fallingNotes.length - 1; i >= 0; i--) {
+        const note = fallingNotes[i];
+        if (x >= note.xPosition && x <= note.xPosition + note.width && y >= note.yPosition && y <= note.yPosition + note.height) {
+            return note.id;
+        }
+    }
+
+    return null;
+}
+
+function handleMouseDown(event) {
+    const canvas = canvasElement.value;
+
+    const rect = canvas.getBoundingClientRect();
+
+    const x = event.clientX - rect.left;
+    const y = event.clientY - rect.top;
+
+    const noteId = getNoteAt(x, y);
+    if (!noteId) return;
+
+    switch (event.button) {
+        case 0:
+            return emit("assign-left", noteId);
+        case 2:
+            return emit("assign-right", noteId);
+    }
+}
+
+function preventContextMenu(event) { event.preventDefault(); }
+
 onMounted(() => {
     const canvas = canvasElement.value;
     canvasContext = canvas.getContext("2d");
@@ -114,6 +151,11 @@ onMounted(() => {
         resizeCanvasToCssSize(canvas);
         prepareVisualNotes();
     });
+
+    if (props.mode === "edit") {
+        canvas.addEventListener("mousedown", handleMouseDown);
+        canvas.addEventListener("contextmenu", preventContextMenu);
+    }
 
     animationLoop();
 });

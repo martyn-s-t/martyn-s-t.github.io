@@ -4,7 +4,16 @@ import { OpenSheetMusicDisplay } from "opensheetmusicdisplay";
 import midiToMusicXml from "./../../engine/midiToMusicXml";
 import useGameEngine from "./../../engine/useGameEngine";
 
-const { quantiseMidi } = useGameEngine();
+const settings = {
+    requireHoldAllKeys: localStorage.getItem("requireHoldAllKeys") === "true",
+    keyPressLeeway: Number(localStorage.getItem("keyPressLeeway")),
+    midiInputDevice: localStorage.getItem("midiInputDevice"),
+    midiOutputDevice: localStorage.getItem("midiOutputDevice"),
+    quantiseNotes: localStorage.getItem("quantiseNotes") === "true",
+    quantiseSubdivisions: Number(localStorage.getItem("quantiseSubdivisions")),
+}
+
+const { quantiseMidi } = useGameEngine(settings);
 
 const emit = defineEmits(["navigate"]);
 

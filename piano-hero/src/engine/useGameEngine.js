@@ -3,7 +3,8 @@ import { ref } from "vue";
 import * as Tone from "tone";
 import { Midi } from "@tonejs/midi";
 
-export default function useGameEngine() {
+export default function useGameEngine(settings) {
+    const selectedMidi = ref({});
     const notes = ref([]);
     const fallingNotes = ref([]);
 
@@ -31,11 +32,11 @@ export default function useGameEngine() {
     const recordStartTime = ref(0);
     const pausedAt = ref(0);
 
-    const requireHoldAllKeys = ref(localStorage.getItem("requireHoldAllKeys") === "true");
-    const keyPressLeeway = ref(Number(localStorage.getItem("keyPressLeeway") || 0));
+    const requireHoldAllKeys = ref(settings.requireHoldAllKeys);
+    const keyPressLeeway = ref(settings.keyPressLeeway);
 
-    const midiInputDeviceId = ref(localStorage.getItem("midiInputDevice"));
-    const midiOutputDeviceId = ref(localStorage.getItem("midiOutputDevice"));
+    const midiInputDeviceId = ref(settings.midiInputDevice);
+    const midiOutputDeviceId = ref(settings.midiOutputDevice);
     const midiInputDevice = ref(null);
     const midiOutputDevice = ref(null);
 
@@ -45,8 +46,8 @@ export default function useGameEngine() {
     const timeToFall = ref(3);
     const playbackSpeed = ref(1.0);
     const ppq = ref(480);
-    const enableQuantiseNotes = ref(localStorage.getItem("quantiseNotes") === "true");
-    const quantiseSubdivisions = ref(Number(localStorage.getItem("quantiseSubdivisions") || 0))
+    const enableQuantiseNotes = ref(settings.quantiseNotes);
+    const quantiseSubdivisions = ref(settings.quantiseSubdivisions);
 
     const SAMPLE_URLS = {
         A1: "A1.mp3",
@@ -334,6 +335,8 @@ export default function useGameEngine() {
             startTime.value = 0;
         }
 
+        progressPercentage.value = elapsedSeconds.value / totalSeconds.value;
+
         requestedNotes.value = [];
         activeNotes.value = {};
 
@@ -367,7 +370,7 @@ export default function useGameEngine() {
 
     function saveRec() {
         const midi = new Midi();
-        
+
         midi.header.setTempo(recordingTempo.value)
         midi.header.timeSignatures.push({
             ticks: 0,
@@ -428,6 +431,9 @@ export default function useGameEngine() {
 
 
     function loadMidi(midi) {
+        selectedMidi.value = midi;
+        window.selectedMidi = midi;
+        assignNoteIds(midi);
         if (midi.header.tempos.length === 0) {
             addBpmFromFirstNote(midi);
         }
@@ -438,8 +444,10 @@ export default function useGameEngine() {
         const left = midi.tracks[1]?.notes || [];
         const right = midi.tracks[0]?.notes || [];
 
-        notes.value = [...left.map(n => ({ ...n, hand: "left" })),
-        ...right.map(n => ({ ...n, hand: "right" }))];
+        notes.value = [
+            ...left.map(n => ({ ...n, hand: n.hand || "left" })),
+            ...right.map(n => ({ ...n, hand: n.hand || "right" }))
+        ];
 
         duration.value = midi.tracks.reduce((max, track) => {
             let endOfTrack = track.notes.reduce((max, note) => {
@@ -452,6 +460,57 @@ export default function useGameEngine() {
         totalSeconds.value = duration.value + timeToFall.value;
 
         prepareFallingNotes();
+    }
+
+    function assignNoteIds(midi) {
+        for (const track of midi.tracks) {
+            for (const note of track.notes) {
+                note.id = crypto.randomUUID();
+            }
+        }
+    }
+    function autoAssignHands() {
+        for (const note of notes.value) {
+            note.hand = note.midi > 60 ? 'right' : 'left'
+        }
+        prepareFallingNotes();
+    }
+    function assignLeftHand(noteId) {
+        let node = notes.value.find(note => note.id === noteId);
+        node.hand = 'left';
+        prepareFallingNotes();
+    }
+    function assignRightHand(noteId) {
+        let node = notes.value.find(note => note.id === noteId);
+        node.hand = 'right';
+        prepareFallingNotes();
+    }
+    function saveEdit() {
+        const midi = new Midi();
+        midi.fromJSON(selectedMidi.value);
+        
+        midi.tracks.clear();
+
+        const rightHand = midi.addTrack();
+        const leftHand = midi.addTrack();
+
+        notes.value.forEach(note => note.hand === 'left' ? leftHand.addNote(note) : rightHand.addNote(note));
+
+        // notes.value.forEach(note => note.hand === 'left' ? leftHand.push(note) : rightHand.push(note));
+        // selectedMidi.value.tracks.push([rightHand, leftHand]);
+
+
+        const bytes = midi.toArray();
+        const blob = new Blob([bytes], { type: "audio/midi" });
+
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+
+        a.href = url;
+        a.download = `${midi.header.name}-${Date.now()}.mid`;
+        a.click();
+
+        URL.revokeObjectURL(url);
     }
 
     function quantiseMidi(midi) {
@@ -532,6 +591,8 @@ export default function useGameEngine() {
             return {
                 midi: note.midi,
                 hand: note.hand,
+
+                id: note.id,
 
                 startTime: note.time,
                 endTime: note.time + note.duration + timeToFall.value,
@@ -645,6 +706,12 @@ export default function useGameEngine() {
         loadMidi,
         initMidiDevices,
         initAudio,
+
+        // edit
+        autoAssignHands,
+        assignLeftHand,
+        assignRightHand,
+        saveEdit,
 
         // manipulation
         quantiseMidi,

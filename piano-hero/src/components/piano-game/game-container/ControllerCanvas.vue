@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch } from 'vue';
 
-const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "music-roll-on", "music-roll-off", "change-playback-speed", "change-recording-tempo", "change-recording-beats-per-measure", "change-recording-beat-unit"]);
+const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "music-roll-on", "music-roll-off", "change-playback-speed", "change-recording-tempo", "change-recording-beats-per-measure", "change-recording-beat-unit", "auto-assign-hands", "save-edit"]);
 
 const props = defineProps({
     mode: String,
@@ -13,8 +13,6 @@ const props = defineProps({
     beatsPerMeasure: Number,
     beatUnit: Number,
 });
-
-console.log(props);
 
 const playbackSpeedLocal = ref(props.playbackSpeed * 100);
 const bpmLocal = ref(props.bpm);
@@ -57,6 +55,9 @@ function onBeatsPerMeasureChanged(value) {
 function onBeatUnitChanged(value) {
     emit("change-recording-beat-unit", value);
 }
+function autoAssignHands() {
+    emit("auto-assign-hands");
+}
 
 
 </script>
@@ -97,6 +98,9 @@ function onBeatUnitChanged(value) {
                 <v-btn v-if="mode === 'free'" @click="$emit('save-rec')" :disabled="!hasRecording">
                     <v-icon size="x-large">mdi-content-save</v-icon>
                 </v-btn>
+                <v-btn v-if="mode === 'edit'" @click="$emit('save-edit')">
+                    <v-icon size="x-large">mdi-content-save</v-icon>
+                </v-btn>
             </v-btn-group>
         </v-col>
 
@@ -105,7 +109,6 @@ function onBeatUnitChanged(value) {
             <v-number-input v-if="mode === 'free'" v-model="bpmLocal" @update:model-value="onTempoSpeedChange" :min="30" :max="240" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Tempo"></v-number-input>
         </v-col>
 
-        <!-- Spacer -->
         <v-col cols="2">
             <v-row>
                 <v-col>
@@ -121,8 +124,11 @@ function onBeatUnitChanged(value) {
         </v-col>
 
         <v-col cols="1" class="d-flex justify-center h-100">
-            <v-btn v-if="mode !== 'free'" @click="toggleMusicRoll" hide-detail="auto" density="compact" block>
+            <v-btn v-if="!['free', 'edit'].includes(mode)" @click="toggleMusicRoll" hide-detail="auto" density="compact" block>
                 <v-icon size-="x-large">mdi-music-note</v-icon>
+            </v-btn>
+            <v-btn v-if="['edit'].includes(mode)" @click="autoAssignHands" hide-detail="auto" density="compact" black>
+                Auto Assign Hands
             </v-btn>
         </v-col>
 

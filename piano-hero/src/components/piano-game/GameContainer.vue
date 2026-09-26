@@ -20,7 +20,17 @@ const hand = defineModel("selectedHand");
 
 const musicXml = ref(null);
 
+const settings = {
+    requireHoldAllKeys: localStorage.getItem("requireHoldAllKeys") === "true",
+    keyPressLeeway: Number(localStorage.getItem("keyPressLeeway")),
+    midiInputDevice: localStorage.getItem("midiInputDevice"),
+    midiOutputDevice: localStorage.getItem("midiOutputDevice"),
+    quantiseNotes: localStorage.getItem("quantiseNotes") === "true",
+    quantiseSubdivisions: Number(localStorage.getItem("quantiseSubdivisions")),
+}
+
 const {
+    notes,
     fallingNotes,
 
 
@@ -63,6 +73,10 @@ const {
     onKeyDown,
     onKeyUp,
 
+    autoAssignHands,
+    assignLeftHand,
+    assignRightHand,
+    saveEdit,
 
     activeNotes,
     requestedNotes,
@@ -76,15 +90,13 @@ const {
     loadMidi,
     initMidiDevices,
     initAudio,
-} = useGameEngine();
+} = useGameEngine(settings);
 
 
 function navigate(view = "song-mode-select") {
     stop();
     emit("navigate", view);
 }
-
-
 
 onMounted(async () => {    
     await initMidiDevices();    
@@ -107,6 +119,7 @@ onMounted(async () => {
     if (mode.value === "listen") startListen();
     if (mode.value === "learn") startLearn(hand.value);
     if (mode.value === "play") return;
+    if (mode.value === "edit") return;
 });
 
 onBeforeUnmount(() => {
@@ -122,10 +135,11 @@ onBeforeUnmount(() => {
                 @pause="pause" @play="play" @stop="stop" @start="start" 
                 @change-playback-speed="setPlaybackSpeed" @change-recording-tempo="setRecordingTempo" @change-recording-beats-per-measure="setRecordingBeatsPerMeasure" @change-recording-beat-unit="setRecordingBeatUnit"
                 @music-roll-on="musicRollOn" @music-roll-off="musicRollOff" :displayMusicRoll="displayMusicRoll"
-                @rec-on="recOn" @rec-off="recOff" @save-rec="saveRec" @navigate="navigate" />
+                @rec-on="recOn" @rec-off="recOff" @save-rec="saveRec" @navigate="navigate" 
+                @auto-assign-hands="autoAssignHands" @save-edit="saveEdit"/>
         <ProgressCanvas v-if="mode !== 'free'" v-model:isSeeking="isSeeking" :elapsedSeconds="elapsedSeconds" :totalSeconds="totalSeconds" :progressPercentage="progressPercentage" @seek-to="seekTo" />
         <SheetMusicStrip v-if="displayMusicRoll" :musicXml="musicXml" :elapsedSeconds="elapsedSeconds" :duration="duration" :timeToFall="timeToFall"/>
-        <TrackCanvas :notes="fallingNotes" :timeToFall="timeToFall" :duration="duration" :elapsedSeconds="elapsedSeconds" />
+        <TrackCanvas :mode="mode" :notes="fallingNotes" :timeToFall="timeToFall" :duration="duration" :elapsedSeconds="elapsedSeconds" @assign-left="assignLeftHand" @assign-right="assignRightHand"/>
         <KeyboardCanvas v-model:activeNotes="activeNotes" v-model:requestedNotes="requestedNotes" @key-down="onKeyDown" @key-up="onKeyUp" />
     </div>
 </template>
