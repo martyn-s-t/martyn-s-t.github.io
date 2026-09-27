@@ -73,6 +73,10 @@ const {
     onKeyDown,
     onKeyUp,
 
+    metronomeActive,
+    startMetronome,
+    stopMetronome,
+
     autoAssignHands,
     assignLeftHand,
     assignRightHand,
@@ -136,7 +140,9 @@ onBeforeUnmount(() => {
                 @change-playback-speed="setPlaybackSpeed" @change-recording-tempo="setRecordingTempo" @change-recording-beats-per-measure="setRecordingBeatsPerMeasure" @change-recording-beat-unit="setRecordingBeatUnit"
                 @music-roll-on="musicRollOn" @music-roll-off="musicRollOff" :displayMusicRoll="displayMusicRoll"
                 @rec-on="recOn" @rec-off="recOff" @save-rec="saveRec" @navigate="navigate" 
-                @auto-assign-hands="autoAssignHands" @save-edit="saveEdit"/>
+                @auto-assign-hands="autoAssignHands" @save-edit="saveEdit"
+                @start-metronome="startMetronome" @stop-metronome="stopMetronome" :metronomeActive="metronomeActive"
+                />
         <ProgressCanvas v-if="mode !== 'free'" v-model:isSeeking="isSeeking" :elapsedSeconds="elapsedSeconds" :totalSeconds="totalSeconds" :progressPercentage="progressPercentage" @seek-to="seekTo" />
         <SheetMusicStrip v-if="displayMusicRoll" :musicXml="musicXml" :elapsedSeconds="elapsedSeconds" :duration="duration" :timeToFall="timeToFall"/>
         <TrackCanvas :mode="mode" :notes="fallingNotes" :timeToFall="timeToFall" :duration="duration" :elapsedSeconds="elapsedSeconds" @assign-left="assignLeftHand" @assign-right="assignRightHand"/>
