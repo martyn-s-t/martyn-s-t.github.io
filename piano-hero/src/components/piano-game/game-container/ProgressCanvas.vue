@@ -87,6 +87,14 @@ function seekFromEvent() {
     emit("seek-to", newTime);
 }
 
+function onWheel(event) {
+    event.preventDefault();
+    const delta = event.deltaY > 0 ? 1 : -1;
+    const seekAmount = 0.25;
+    const nextTime = props.elapsedSeconds + (delta * seekAmount);
+    emit("seek-to", nextTime);
+}
+
 function formatTime(seconds) {
     seconds = Math.floor(seconds);
     const m = Math.floor(seconds / 60);
@@ -104,6 +112,8 @@ onMounted(() => {
     window.addEventListener("pointermove", onPointerMove);
     window.addEventListener("pointerup", onPointerUp);
 
+    window.addEventListener("wheel", onWheel, { passive: false });
+
     resizeCanvasToCssSize(canvas);
     window.addEventListener("resize", () => resizeCanvasToCssSize(canvas));
 
@@ -112,6 +122,9 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     cancelAnimationFrame(animationFrameId);
+    onBeforeUnmount(() => {
+        window.removeEventListener("wheel", onWheel);
+    });
 });
 </script>
 

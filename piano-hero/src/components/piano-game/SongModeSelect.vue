@@ -22,6 +22,11 @@ function startPlay(hand) {
     selectedHand.value = hand;
     emit("navigate", "game");
 }
+function startEdit() {
+    selectedMode.value = "edit";
+    selectedHand.value = "both";
+    emit("navigate", "game");
+}
 
 </script>
 
@@ -95,6 +100,18 @@ function startPlay(hand) {
                 <v-col cols="12" class="mt-4">
                     <v-btn block color="primary" @click="startPlay('both')">
                         Play Both Hands
+                    </v-btn>
+                </v-col>
+            </v-row>
+        </v-card>
+
+        <!-- EDIT -->
+        <v-card class="mb-6 pa-4">
+             <h3 class="mb-4">Edit</h3>
+             <v-row>
+                <v-col cols="12" class="mt-4">
+                    <v-btn block color="primary" @click="startEdit()">
+                        Edit
                     </v-btn>
                 </v-col>
             </v-row>

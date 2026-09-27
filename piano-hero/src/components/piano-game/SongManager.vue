@@ -21,7 +21,9 @@ const songName = ref("");
 const publicFiles = [
     "./samples/midi/FMA - Brothers.mid",
     "./samples/midi/FMA - Brothers - Part 1-4.mid",
+    "./samples/midi/FMA - Brothers - Part 1-5.mid",
     "./samples/midi/FMA - Brothers - Part 1.mid",
+    "./samples/midi/FMA - Brothers - Part 1 - Hand Split.mid",
     "./samples/midi/FMA - Brothers - Part 2.mid",
     "./samples/midi/FMA - Brothers - Part 3.mid",
     "./samples/midi/FMA - Brothers - Part 4.mid",
