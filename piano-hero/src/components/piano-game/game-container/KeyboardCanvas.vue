@@ -148,7 +148,7 @@ function onPointerDownKey(event) {
 
 function onPointerUpKey() {
     if (currentDepressedKey.value !== null) {
-        emit("key-up", currentDepressedKey.value);
+        emit("key-up", currentDepressedKey.value, "keyboard-canvas");
         currentDepressedKey.value = null;
     }
 }

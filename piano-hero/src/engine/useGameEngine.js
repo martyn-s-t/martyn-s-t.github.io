@@ -43,6 +43,8 @@ export default function useGameEngine(settings) {
     const midiInputDevices = ref([]);
     const midiOutputDevices = ref([]);
 
+    const metronomeActive = ref(false);
+
     const timeToFall = ref(3);
     const playbackSpeed = ref(1.0);
     const ppq = ref(480);
@@ -58,6 +60,7 @@ export default function useGameEngine(settings) {
 
     const voices = {};
     let sampler = null;
+    let metronomeInterval;
 
     async function initMidiDevices() {
         const access = await navigator.requestMIDIAccess();
@@ -113,11 +116,11 @@ export default function useGameEngine(settings) {
                 if (data2 > 0) {
                     onKeyDown(note);
                 } else {
-                    onKeyUp(note);
+                    onKeyUp(note, "midi-message-0x90");
                 }
                 break;
             case 0x80: // Note Off
-                onKeyUp(note);
+                onKeyUp(note, "midi-message-0x80");
                 break;
             case 0xB0: // Control Change
                 break;
@@ -126,7 +129,7 @@ export default function useGameEngine(settings) {
         }
     }
 
-    function noteOn(midi, velocity = 0.8) {
+    function noteOn(midi, velocity = 0.8, source) {
         const now = getNow();
 
         activeNotes.value[midi] ??= { count: 0, pressedAt: now, velocity: 0 };
@@ -192,9 +195,26 @@ export default function useGameEngine(settings) {
                 }
         }
     }
+    function startMetronome(bpm = 60) {
+        console.log(midiOutputDevice.value);
+        if (midiOutputDevice.value === undefined) return
+        midiOutputDevice.value.send([0xFA]);
+        metronomeActive.value = true;
+        metronomeInterval = setInterval(sendMetronomeBeat, 1000 / bpm);
+    }
+    function sendMetronomeBeat() {
+        console.log(`Sending Metronome Beat`);
+        midiOutputDevice.value.send([0xF8]);
+    }
+    function stopMetronome() {
+        if (midiOutputDevice.value === undefined) return
+        midiOutputDevice.value.send([0xFC]); // Stop
+        metronomeActive.value = false;
+        clearInterval(metronomeInterval);
+    }
 
     function onKeyDown(midi, velocity = 1) {
-        noteOn(midi, velocity);
+        noteOn(midi, velocity, "on key down");
 
         // Learn mode: mark requested notes as pressed
         if (mode === "learn") {
@@ -216,22 +236,23 @@ export default function useGameEngine(settings) {
         }
     }
 
-    function onKeyUp(midi) {
+    function onKeyUp(midi, source) {
+        const entry = activeNotes.value[midi];
+        const duration = getNow() - entry.pressedAt;
+        const start = entry.pressedAt - recordStartTime.value;
+
+        const note = {
+            "duration": duration,
+            "durationTicks": Math.round(duration * ppq.value),
+            "midi": midi,
+            "name": Tone.Frequency(midi, "midi").toNote(),
+            "ticks": Math.round(start * ppq.value),
+            "time": start,
+            "velocity": entry.velocity
+        }
         if (mode === "free") {
             if (isRecording.value) {
-                const entry = activeNotes.value[midi];
                 if (entry) {
-                    const duration = getNow() - entry.pressedAt;
-                    const start = entry.pressedAt - recordStartTime.value;
-                    const note = {
-                        "duration": duration,
-                        "durationTicks": Math.round(duration * ppq.value),
-                        "midi": midi,
-                        "name": Tone.Frequency(midi, "midi").toNote(),
-                        "ticks": Math.round(start * ppq.value),
-                        "time": start,
-                        "velocity": entry.velocity
-                    }
                     recordedNotes.value.push(note);
                 };
             }
@@ -246,7 +267,7 @@ export default function useGameEngine(settings) {
         const noteDuration = note.duration * 1000 / playbackSpeed.value
 
         if (mode === "listen") {
-            noteOn(note.midi);
+            noteOn(note.midi, 1, "requested Note on: listen");
             setTimeout(() => noteOff(note.midi), noteDuration);
             return;
         }
@@ -272,7 +293,7 @@ export default function useGameEngine(settings) {
 
                 pause();
             } else {
-                noteOn(note.midi);
+                noteOn(note.midi, 1, "requested note on: learn");
                 setTimeout(() => noteOff(note.midi), noteDuration);
             }
             return;
@@ -290,8 +311,6 @@ export default function useGameEngine(settings) {
 
     async function play() {
         if (isPlaying.value) return;
-
-        await Tone.start();
 
         if (pausedAt.value) {
             startTime.value = getNow() - pausedAt.value;
@@ -488,7 +507,7 @@ export default function useGameEngine(settings) {
     function saveEdit() {
         const midi = new Midi();
         midi.fromJSON(selectedMidi.value);
-        
+
         midi.tracks.clear();
 
         const rightHand = midi.addTrack();
@@ -523,8 +542,6 @@ export default function useGameEngine(settings) {
             }
         }
 
-        console.log([...durations].sort((a, b) => a - b));
-
         if (enableQuantiseNotes.value === false) return midi;
         return quantiseTracks(midi.tracks, midi.header.ppq, quantiseSubdivisions.value);
     }
@@ -537,7 +554,6 @@ export default function useGameEngine(settings) {
 
     function quantiseNotes(notes, ppq, subdivision) {
         const step = ppq / subdivision;
-        console.log({ ppq, subdivision, step });
         for (const note of notes) {
 
             let originalNote = JSON.parse(JSON.stringify(note));
@@ -640,7 +656,11 @@ export default function useGameEngine(settings) {
         return Math.round(60 / secondsPerQuarter);
     }
 
-    tick();
+    async function start() {
+        await Tone.start();
+        tick();
+    }
+    start();
     return {
         // state
         notes,
@@ -701,6 +721,11 @@ export default function useGameEngine(settings) {
         startListen,
         startLearn,
         startPlay,
+
+        // metronome
+        metronomeActive,
+        startMetronome,
+        stopMetronome,
 
         // midi
         loadMidi,

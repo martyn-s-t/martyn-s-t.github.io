@@ -1,7 +1,14 @@
 <script setup>
 import { ref, watch } from 'vue';
 
-const emit = defineEmits(["navigate", "start", "play", "pause", "stop", "rec-on", "rec-off", "save-rec", "music-roll-on", "music-roll-off", "change-playback-speed", "change-recording-tempo", "change-recording-beats-per-measure", "change-recording-beat-unit", "auto-assign-hands", "save-edit"]);
+const emit = defineEmits([
+    "navigate", "start", "play", "pause", "stop",
+    "rec-on", "rec-off", "save-rec",
+    "music-roll-on", "music-roll-off",
+    "change-playback-speed", "change-recording-tempo", "change-recording-beats-per-measure", "change-recording-beat-unit",
+    "auto-assign-hands", "save-edit",
+    "start-metronome", "stop-metronome"
+]);
 
 const props = defineProps({
     mode: String,
@@ -12,6 +19,7 @@ const props = defineProps({
     bpm: Number,
     beatsPerMeasure: Number,
     beatUnit: Number,
+    metronomeActive: Boolean,
 });
 
 const playbackSpeedLocal = ref(props.playbackSpeed * 100);
@@ -58,7 +66,20 @@ function onBeatUnitChanged(value) {
 function autoAssignHands() {
     emit("auto-assign-hands");
 }
-
+function startMetronome() {
+    emit("start-metronome");
+}
+function stopMetronome() {
+    emit("stop-metronome");
+}
+function toggleMetronome() {
+    if (props.metronomeActive) {
+        stopMetronome();
+    } else {
+        startMetronome();
+    }
+    
+}
 
 </script>
 
@@ -101,6 +122,10 @@ function autoAssignHands() {
                 <v-btn v-if="mode === 'edit'" @click="$emit('save-edit')">
                     <v-icon size="x-large">mdi-content-save</v-icon>
                 </v-btn>
+
+                <v-btn @click="toggleMetronome">
+                    <v-icon size="x-large">mdi-metronome</v-icon>
+                </v-btn>
             </v-btn-group>
         </v-col>
 
@@ -114,7 +139,7 @@ function autoAssignHands() {
                 <v-col>
                     <v-number-input v-if="mode === 'free'" v-model="beatsPerMeasureLocal" @update:model-value="onBeatsPerMeasureChanged" :min="1" :max="32" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Beats Per Measure"></v-number-input>
                 </v-col>
-                <v-col cols="auto" v-if="mode === 'free'" >
+                <v-col cols="auto" v-if="mode === 'free'">
                     <v-icon size="x-large">mdi-slash-forward</v-icon>
                 </v-col>
                 <v-col>
