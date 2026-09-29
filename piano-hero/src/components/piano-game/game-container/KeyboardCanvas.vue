@@ -51,6 +51,7 @@ function resizeCanvasToCssSize(canvas) {
 
 function getSizeCalculations() {
     const canvas = canvasElement.value;
+    // if (!canvas) return {};
     const canvasWidth = canvas.width;
     const canvasHeight = canvas.height;
 

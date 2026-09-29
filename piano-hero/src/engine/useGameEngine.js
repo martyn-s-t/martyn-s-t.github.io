@@ -11,6 +11,7 @@ export default function useGameEngine(settings) {
     const activeNotes = ref({});
     const requestedNotes = ref([]);
     const recordedNotes = ref([]);
+    const pressedNotes = ref([]);
 
     const duration = ref(0);
     const totalSeconds = ref(0);
@@ -237,8 +238,9 @@ export default function useGameEngine(settings) {
     }
 
     function onKeyUp(midi, source) {
+        const now = getNow();
         const entry = activeNotes.value[midi];
-        const duration = getNow() - entry.pressedAt;
+        const duration = now - entry.pressedAt;
         const start = entry.pressedAt - recordStartTime.value;
 
         const note = {
@@ -251,6 +253,7 @@ export default function useGameEngine(settings) {
             "velocity": entry.velocity
         }
         if (mode === "free") {
+            pressedNotes.value.push(note);
             if (isRecording.value) {
                 if (entry) {
                     recordedNotes.value.push(note);
@@ -427,9 +430,8 @@ export default function useGameEngine(settings) {
 
     function startFreePlay() {
         mode = "free";
-        stop();
-
         fallingNotes.value = [];
+        play();
     }
     function startListen() {
         mode = "listen";
@@ -637,12 +639,19 @@ export default function useGameEngine(settings) {
 
     function tick() {
         const now = getNow();
+        if (mode === "free") {
+            elapsedSeconds.value = now;
+            pressedNotes.value = pressedNotes.value.filter(note => {
+                return note.time + note.duration > now - timeToFall.value
+            });
+            return requestAnimationFrame(tick);
+        }
         if (isPlaying.value && !isSeeking.value) {
             elapsedSeconds.value = isPlaying.value ? Math.min((now - startTime.value) * playbackSpeed.value, totalSeconds.value) : pausedAt.value;
             progressPercentage.value = elapsedSeconds.value / totalSeconds.value;
             updateNoteTriggers();
         }
-        requestAnimationFrame(tick);
+        return requestAnimationFrame(tick);
     }
 
     function addBpmFromFirstNote(midi) {
@@ -656,17 +665,18 @@ export default function useGameEngine(settings) {
         return Math.round(60 / secondsPerQuarter);
     }
 
-    async function start() {
+    async function init() {
         await Tone.start();
         tick();
     }
-    start();
+    init();
     return {
         // state
         notes,
         fallingNotes,
         activeNotes,
         requestedNotes,
+        pressedNotes,
 
         duration,
 
