@@ -32,7 +32,7 @@ const settings = {
 const {
     notes,
     fallingNotes,
-
+    pressedNotes,
 
     duration,
     timeToFall,
@@ -145,7 +145,7 @@ onBeforeUnmount(() => {
                 />
         <ProgressCanvas v-if="mode !== 'free'" v-model:isSeeking="isSeeking" :elapsedSeconds="elapsedSeconds" :totalSeconds="totalSeconds" :progressPercentage="progressPercentage" @seek-to="seekTo" />
         <SheetMusicStrip v-if="displayMusicRoll" :musicXml="musicXml" :elapsedSeconds="elapsedSeconds" :duration="duration" :timeToFall="timeToFall"/>
-        <TrackCanvas :mode="mode" :notes="fallingNotes" :timeToFall="timeToFall" :duration="duration" :elapsedSeconds="elapsedSeconds" @assign-left="assignLeftHand" @assign-right="assignRightHand"/>
+        <TrackCanvas :mode="mode" :notes="fallingNotes" :timeToFall="timeToFall" :duration="duration" :elapsedSeconds="elapsedSeconds" :activeNotes="activeNotes" :pressedNotes="pressedNotes" @assign-left="assignLeftHand" @assign-right="assignRightHand"/>
         <KeyboardCanvas v-model:activeNotes="activeNotes" v-model:requestedNotes="requestedNotes" @key-down="onKeyDown" @key-up="onKeyUp" />
     </div>
 </template>

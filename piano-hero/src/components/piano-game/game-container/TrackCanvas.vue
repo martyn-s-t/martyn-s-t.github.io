@@ -8,6 +8,8 @@ const props = defineProps({
     startTime: Number,
     elapsedSeconds: Number,
     mode: String,
+    activeNotes: Object,
+    pressedNotes: Array
 });
 
 const emit = defineEmits(["assign-left", "assign-right"]);
@@ -76,24 +78,80 @@ function animationLoop() {
 
     canvasContext.clearRect(0, 0, w, h);
 
-    fallingNotes.forEach(note => {
-        renderNote(note, props.elapsedSeconds);
-    });
+    if (props.mode === "free") {
+        renderActiveNotes();
+    } else {
+        renderNotes();
+    }
+
 
     animationFrameId = requestAnimationFrame(animationLoop);
 }
 
+function renderNotes(notes) {
+    fallingNotes.forEach(note => {
+        renderNote(note, props.elapsedSeconds);
+    });
+}
 function renderNote(note, elapsedSeconds) {
     if (elapsedSeconds < note.startTime || elapsedSeconds > note.endTime) return;
 
     note.yPosition = (elapsedSeconds - note.startTime) * pixelsPerSecond - note.height;
     const fill = note.hand === "left" ? (note.isBlack ? leftBlack : leftWhite) : (note.isBlack ? rightBlack : rightWhite);
-    
+
     canvasContext.fillStyle = fill;
 
     canvasContext.fillRect(note.xPosition, note.yPosition, note.width, note.height);
     canvasContext.strokeRect(note.xPosition, note.yPosition, note.width, note.height);
 }
+function renderActiveNotes() {
+    const now = props.elapsedSeconds;
+
+    Object.entries(props.activeNotes).forEach(([note, data]) => {
+        renderActiveNote({ midi: note, startedAt: data.pressedAt }, now);
+    });
+    props.pressedNotes.forEach(note => {
+        renderPressedNotes({ midi: note.midi, startedAt: note.time, duration: note.duration }, now);
+    })
+}
+
+function renderActiveNote(note, now) {
+    const isBlack = isBlackMidi(note.midi);
+    const whiteIndex = getWhiteKeyIndex(note.midi);
+
+    const xPosition = isBlack ? whiteIndex * whiteKeyWidth.value - blackKeyWidth.value / 2 : whiteIndex * whiteKeyWidth.value;
+    const width = isBlack ? blackKeyWidth.value : whiteKeyWidth.value;
+
+    const timeSinceStart = now - note.startedAt
+    const duration = note.duration ?? timeSinceStart;
+
+
+    const height = duration * pixelsPerSecond;
+    const keyboardY = canvasElement.value.height;
+    const yPosition = keyboardY - height;
+
+    canvasContext.fillStyle = isBlack ? "rgba(255,150,0,0.9)" : "rgba(255,200,0,0.8)";
+    canvasContext.fillRect(xPosition, yPosition, width, height);
+    canvasContext.strokeRect(xPosition, yPosition, width, height);
+}
+function renderPressedNotes(note, now) {
+    const isBlack = isBlackMidi(note.midi);
+    const whiteIndex = getWhiteKeyIndex(note.midi);
+
+    const xPosition = isBlack ? whiteIndex * whiteKeyWidth.value - blackKeyWidth.value / 2 : whiteIndex * whiteKeyWidth.value;
+    const width = isBlack ? blackKeyWidth.value : whiteKeyWidth.value;
+
+    const upwardsMovement = (now - note.startedAt - note.duration) * pixelsPerSecond
+    const height = note.duration * pixelsPerSecond;
+    const keyboardY = canvasElement.value.height;
+    const yPosition = keyboardY - height - upwardsMovement;
+
+    canvasContext.fillStyle = isBlack ? "rgba(255,150,0,0.9)" : "rgba(255,200,0,0.8)";
+    canvasContext.fillRect(xPosition, yPosition, width, height);
+    canvasContext.strokeRect(xPosition, yPosition, width, height);
+}
+
+
 
 function isBlackMidi(midiNumber) {
     const note = midiNumber % 12;

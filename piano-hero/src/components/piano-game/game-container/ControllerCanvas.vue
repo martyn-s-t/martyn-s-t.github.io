@@ -92,27 +92,25 @@ function toggleMetronome() {
             </v-btn>
         </v-col>
 
-        <v-col cols="3"></v-col>
-
         <v-col cols="4" class="d-flex justify-center h-100">
             <v-btn-group variant="outlined" divided>
                 <v-btn v-if="mode === 'free'" @click="toggleRec" :color="isRecording ? 'red' : undefined">
                     <v-icon size="x-large">mdi-record</v-icon>
                 </v-btn>
 
-                <v-btn @click="$emit('start')">
+                <v-btn v-if="mode !== 'free'" @click="$emit('start')">
                     <v-icon size="x-large">mdi-skip-previous</v-icon>
                 </v-btn>
 
-                <v-btn @click="$emit('play')">
+                <v-btn v-if="mode !== 'free'" @click="$emit('play')">
                     <v-icon size="x-large">mdi-play</v-icon>
                 </v-btn>
 
-                <v-btn @click="$emit('pause')">
+                <v-btn v-if="mode !== 'free'" @click="$emit('pause')">
                     <v-icon size="x-large">mdi-pause</v-icon>
                 </v-btn>
 
-                <v-btn @click="$emit('stop')">
+                <v-btn v-if="mode !== 'free'" @click="$emit('stop')">
                     <v-icon size="x-large">mdi-stop</v-icon>
                 </v-btn>
 
@@ -123,27 +121,27 @@ function toggleMetronome() {
                     <v-icon size="x-large">mdi-content-save</v-icon>
                 </v-btn>
 
-                <v-btn @click="toggleMetronome">
+                <v-btn v-if="false" @click="toggleMetronome">
                     <v-icon size="x-large">mdi-metronome</v-icon>
                 </v-btn>
             </v-btn-group>
         </v-col>
 
-        <v-col cols="1" class="d-flex justify-center h-100">
-            <v-number-input v-if="mode !== 'free'" v-model="playbackSpeedLocal" @update:model-value="onPlaybackSpeedChanged" :min="10" :max="200" :step="10" control-variant="split" hide-detail="auto" density="compact"></v-number-input>
+        <v-col cols="2" class="d-flex justify-center h-100">
+            <v-number-input v-if="mode !== 'free'" v-model="playbackSpeedLocal" @update:model-value="onPlaybackSpeedChanged" :min="10" :max="200" :step="10" control-variant="split" hide-detail="auto" density="compact" label="BPM"></v-number-input>
             <v-number-input v-if="mode === 'free'" v-model="bpmLocal" @update:model-value="onTempoSpeedChange" :min="30" :max="240" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Tempo"></v-number-input>
         </v-col>
 
-        <v-col cols="2">
+        <v-col cols="4" class="d-flex justify-center h-100">
             <v-row>
                 <v-col>
-                    <v-number-input v-if="mode === 'free'" v-model="beatsPerMeasureLocal" @update:model-value="onBeatsPerMeasureChanged" :min="1" :max="32" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Beats Per Measure"></v-number-input>
+                    <v-number-input v-if="mode === 'free'" v-model="beatsPerMeasureLocal" @update:model-value="onBeatsPerMeasureChanged" :min="1" :max="32" :step="1" control-variant="split" :hide-detail="true" density="compact" label="Beats Per Measure"></v-number-input>
                 </v-col>
                 <v-col cols="auto" v-if="mode === 'free'">
                     <v-icon size="x-large">mdi-slash-forward</v-icon>
                 </v-col>
                 <v-col>
-                    <v-number-input v-if="mode === 'free'" v-model="beatUnitLocal" @update:model-value="onBeatUnitChanged" :min="1" :max="32" :step="1" control-variant="split" hide-detail="auto" density="compact" label="Beat Unit"></v-number-input>
+                    <v-number-input v-if="mode === 'free'" v-model="beatUnitLocal" @update:model-value="onBeatUnitChanged" :min="1" :max="32" :step="1" control-variant="split" :hide-detail="true" density="compact" label="Beat Unit"></v-number-input>
                 </v-col>
             </v-row>
         </v-col>
