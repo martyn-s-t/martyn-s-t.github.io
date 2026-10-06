@@ -29,13 +29,9 @@ function getNoteType(duration, divisions) {
     return lookup.find(x => x.duration === duration);
 }
 
-
-function createNote(note, staffNumber, divisions, isChord = false) {
-    const { step, alter, octave } = pitchFromNote(note);
-    const notation = getNoteType(note.durationTicks, divisions);
-
-    const typeXml = notation ? `<type>${notation.type}</type>` : "";
-    const dotsXml = notation ? "<dot/>".repeat(notation.dots) : "";
+function createNote(note, staffNumber, divisions, tick, isChord = false) {
+    const typeXml = note.notation ? `<type>${note.notation.type}</type>` : "";
+    const dotsXml = note.notation ? "<dot/>".repeat(note.notation.dots) : "";
     const tieXml = `${note.endsTie ? '<tie type="start"/>' : ''} ${note.startsTie ? '<tie type="stop"/>' : ''}`;
 
     const notationXml = note.startsTie || note.endsTie ? ` <notations> ${note.endsTie ? '<tied type="start"/>' : ''} ${note.startsTie ? '<tied type="stop"/>' : ''} </notations>` : '';
@@ -44,9 +40,9 @@ function createNote(note, staffNumber, divisions, isChord = false) {
     <note>
         ${isChord ? '<chord/>' : ''}
         <pitch>
-            <step>${step}</step>
-            ${alter ? `<alter>${alter}</alter>` : ''}
-            <octave>${octave}</octave>
+            <step>${note.pitch.step}</step>
+            ${note.pitch.alter ? `<alter>${note.pitch.alter}</alter>` : ''}
+            <octave>${note.pitch.octave}</octave>
         </pitch>
         ${tieXml}
         <duration>${note.durationTicks}</duration>
@@ -127,7 +123,7 @@ function processTrack(track, ticks, staffNumber, ticksPerMeasure, measureIndex, 
 
         const notes = track[tick];
         notes.forEach((note, index) => {
-            xml += createNote(note, staffNumber, division, index > 0);
+            xml += createNote(note, staffNumber, division, tick, index > 0);
         });
         let maxDuration = notes.reduce((cumulative, current) => Math.max(cumulative, current.durationTicks), 0);
 
@@ -161,7 +157,7 @@ function buildMeasure(groupedMeasure, divisions, bpm, measureIndex, beatsPerMeas
     if (measureDuration > 0)
         xml += createBackup(measureDuration);
 
-    xml += processTrack(bassTrack, bassTicks, 2, measureDuration, measureIndex);
+    xml += processTrack(bassTrack, bassTicks, 2, measureDuration, measureIndex, divisions);
 
     return `<measure number="${measureIndex + 1}">${xml}</measure>`;
 }
@@ -235,10 +231,14 @@ export default function midiToMusicXml(midiJson) {
 
     const measures = [];
     for (const note of notes) {
+        note.notation = getNoteType(note.durationTicks, divisions);
+        note.pitch = pitchFromNote(note);
         const index = Math.floor(note.ticks / measureLengthTicks);
         measures[index] ??= [];
         measures[index].push(note);
     }
+
+    console.log(notes);
 
     let groupedMeasures = [];
     for (const measure of measures) {
@@ -249,6 +249,10 @@ export default function midiToMusicXml(midiJson) {
             group[note.track][note.ticks].push(note);
         }
         groupedMeasures.push(group);
+    }
+
+    for (const groupedMeasure of groupedMeasures) {
+        console.log(groupedMeasure);
     }
 
     const xml = `

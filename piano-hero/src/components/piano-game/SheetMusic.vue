@@ -33,7 +33,8 @@ onMounted(async () => {
     quantiseMidi(midi.value);
     musicXml.value = midiToMusicXml(midi.value);
 
-    window.xml = musicXml.value
+    window.midi = midi.value;
+    window.xml = musicXml.value;
 
     osmd.value = new OpenSheetMusicDisplay(container.value, {
         autoResize: true,
