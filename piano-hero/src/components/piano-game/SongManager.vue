@@ -17,6 +17,7 @@ const deleteDialog = ref(false);
 const uploadDialog = ref(false);
 
 const songName = ref("");
+const searchQuery = ref("");
 
 const publicFiles = [
     "./samples/midi/FMA - Brothers.mid",
@@ -28,10 +29,10 @@ const publicFiles = [
     "./samples/midi/FMA - Brothers - Part 4 - Hand Split.mid",
     "./samples/midi/FMA - Brothers - Part 5 - Hand Split.mid",
     "./samples/midi/FMA - Brothers - Part 6 - Hand Split.mid",
-    "./samples/midi/FMA - Brothers - Part 6-1.mid",
-    "./samples/midi/FMA - Brothers - Part 6-2.mid",
-    "./samples/midi/FMA - Brothers - Part 6-3.mid",
-    "./samples/midi/FMA - Brothers - Part 6-4.mid",
+    "./samples/midi/FMA - Brothers - Part 6-1 - Hand Split.mid",
+    "./samples/midi/FMA - Brothers - Part 6-2 - Hand Split.mid",
+    "./samples/midi/FMA - Brothers - Part 6-3 - Hand Split.mid",
+    "./samples/midi/FMA - Brothers - Part 6-4 - Hand Split.mid",
     "./samples/midi/FMA - Brothers - Part 7 - Hand Split.mid",
     "./samples/midi/Final Fantasy XV - Valse di Fantastica.mid",
     "./samples/midi/Final Fantasy XV - Valse di Fantastica - Part 1.mid",
@@ -132,14 +133,25 @@ async function loadSongFromFile(file) {
     <v-container class="pa-4">
         <v-card>
             <v-card-title class="d-flex justify-space-between align-center">
-                <v-btn color="error" @click="$emit('navigate', 'main-menu')">
-                    <v-icon>mdi-chevron-left</v-icon>
-                </v-btn>
-                <span>Loaded Songs</span>
-                <v-btn color="primary" @click="openUpload">Upload</v-btn>
+                <v-row>
+                    <v-col cols="2">
+                        <v-btn color="error" @click="$emit('navigate', 'main-menu')" block>
+                            <v-icon>mdi-chevron-left</v-icon>
+                        </v-btn>
+                    </v-col>
+                    <v-col cols="6" class="d-flex align-center justify-center">
+                        <span>Loaded Songs</span>
+                    </v-col>
+                    <v-col cols="2">
+                        <v-text-field v-model="searchQuery" label="Search Songs" density="compact" hide-details="auto"></v-text-field>
+                    </v-col>
+                    <v-col cols="2" class="d-flex justify-end">
+                        <v-btn color="primary" @click="openUpload" block>Upload</v-btn>
+                    </v-col>
+                </v-row>
             </v-card-title>
 
-            <v-data-table :headers="headers" :items="songs" item-key="name" class="elevation-1" @click:row="emit('song-selected', $event.item)">
+            <v-data-table :headers="headers" :items="songs" item-key="name" :search="searchQuery" class="elevation-1" @click:row="emit('song-selected', $event.item)">
                 <template #item.actions="{ item }">
                     <v-btn icon color="primary" variant="text" @click="playSong(item)"><v-icon>mdi-play</v-icon></v-btn>
                     <v-btn icon variant="text" @click="openEdit(item)"><v-icon>mdi-pencil</v-icon></v-btn>
